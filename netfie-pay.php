@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.4.0
+ * Version:     1.5.0
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.4.0' );
+define( 'NETFIE_PAY_VERSION', '1.5.0' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -645,7 +645,7 @@ function netfie_pay_init_gateway() {
 				</div>
 			</div>
 
-			<!-- Popup -->
+			<!-- Popup markup to be placed inside the DOM (JS will append to body) -->
 			<div id="netfie-popup-overlay" class="netfie-popup-overlay">
 				<div class="netfie-popup-panel" role="dialog" aria-modal="true" aria-label="Choose a payment method">
 					<div class="netfie-popup-header">
@@ -687,10 +687,10 @@ function netfie_pay_init_gateway() {
 				display:flex; align-items:center; gap:12px; width:100%;
 				background:linear-gradient(135deg,#6C2BD9,#54209f); color:#fff;
 				border:none; border-radius:12px; padding:16px 20px; font-size:15px; font-weight:600;
-				cursor:pointer; box-shadow:0 4px 14px rgba(108,43,217,.2);
+				cursor:pointer; box-shadow:0 4px 14px rgba(108, 43, 217, 0.2);
 				transition:all 0.2s ease;
 			}
-			.netfie-select-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 20px rgba(108,43,217,.3); }
+			.netfie-select-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 20px rgba(108, 43, 217, 0.3); }
 			.netfie-select-btn-icon{ font-size:18px; }
 			.netfie-select-btn-arrow{ margin-left:auto; font-size:20px; opacity:.85; }
 
@@ -715,12 +715,12 @@ function netfie_pay_init_gateway() {
 			}
 
 			.netfie-popup-overlay{
-				position:fixed; inset:0; z-index:999999; background:rgba(15, 23, 42, 0.6);
-				backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+				position:fixed; inset:0; z-index:99999999 !important; background:rgba(15, 23, 42, 0.6) !important;
+				backdrop-filter:blur(8px) !important; -webkit-backdrop-filter:blur(8px) !important;
 				display:flex; align-items:center; justify-content:center; padding:20px;
 				opacity:0; visibility:hidden; transition:all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 			}
-			.netfie-popup-overlay.is-open{ opacity:1; visibility:visible; }
+			.netfie-popup-overlay.is-open{ opacity:1 !important; visibility:visible !important; }
 
 			.netfie-popup-panel{
 				background:#fff; width:100%; max-width:580px; max-height:90vh; overflow-y:auto;
@@ -780,7 +780,16 @@ function netfie_pay_init_gateway() {
 
 			<script>
 			(function($){
+				// Safely append floating overlay container directly to page body so it escapes nested containers and remains above all other sections
+				function netfieMovePopupToBody(){
+					var $popup = $('#netfie-popup-overlay');
+					if ($popup.length && !$popup.parent().is('body')) {
+						$('body').append($popup);
+					}
+				}
+
 				function netfieOpenPopup(){
+					netfieMovePopupToBody();
 					$('#netfie-popup-overlay').addClass('is-open');
 					$('body').css('overflow','hidden');
 				}
@@ -833,6 +842,10 @@ function netfie_pay_init_gateway() {
 					$('#netfie-open-popup-label').text('Change: ' + name);
 
 					setTimeout(netfieClosePopup, 180);
+				});
+
+				$(document).ready(function(){
+					netfieMovePopupToBody();
 				});
 			})(jQuery);
 			</script>
@@ -1063,8 +1076,9 @@ function netfie_pay_checkout_ui_css() {
 		body.netfie-modern-checkout .netfie-checkout-fullwidth{ padding:28px 4%; }
 	}
 
+	/* Beautiful 2-column grid structure: Left gets Billing Details, Right gets Order / Subtotal review */
 	body.netfie-modern-checkout .netfie-checkout-fullwidth form.woocommerce-checkout{
-		max-width:1440px;
+		max-width:1400px;
 		width:100%;
 		margin:0 auto;
 		font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -1085,7 +1099,7 @@ function netfie_pay_checkout_ui_css() {
 
 	/* ---- Header Section ---- */
 	body.netfie-modern-checkout .netfie-checkout-header {
-		max-width: 1440px;
+		max-width: 1400px;
 		width: 100%;
 		margin: 0 auto 32px;
 		display: flex;
@@ -1118,12 +1132,29 @@ function netfie_pay_checkout_ui_css() {
 		font-weight: 600;
 	}
 
-	/* ---- Column structure fixes ---- */
+	/* Left side columns mapped into left grid side stack */
 	body.netfie-modern-checkout .netfie-checkout-fullwidth #customer_details{
 		grid-column:1;
+		grid-row:1 / span 3;
 	}
+	
+	/* Order heading mapped neatly above the order review container */
+	body.netfie-modern-checkout .netfie-checkout-fullwidth #order_review_heading {
+		grid-column: 2;
+		grid-row: 1;
+		margin: 0 0 16px 0;
+		font-size: 20px;
+		font-weight: 700;
+		color: var(--netfie-text);
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	/* Right column containing order summaries, products and gateways */
 	body.netfie-modern-checkout .netfie-checkout-fullwidth #order_review{
 		grid-column:2;
+		grid-row:2;
 		position:sticky;
 		top:24px;
 		background:var(--netfie-card);
@@ -1134,15 +1165,21 @@ function netfie_pay_checkout_ui_css() {
 		animation:netfieFadeUp .5s ease both;
 		animation-delay:.15s;
 	}
+
 	@media (max-width:1024px){
+		body.netfie-modern-checkout .netfie-checkout-fullwidth #order_review_heading {
+			grid-column:1;
+			grid-row: auto;
+			margin-top: 24px;
+		}
 		body.netfie-modern-checkout .netfie-checkout-fullwidth #order_review{
 			grid-column:1;
+			grid-row: auto;
 			position:static;
-			margin-top:0;
 		}
 	}
 
-	/* Prevent side-by-side floated layouts inside columns causing empty spaces */
+	/* Stack standard floated layout column systems beautifully */
 	body.netfie-modern-checkout .col-1,
 	body.netfie-modern-checkout .col-2 {
 		float: none !important;
@@ -1164,7 +1201,7 @@ function netfie_pay_checkout_ui_css() {
 	}
 	body.netfie-modern-checkout .woocommerce-additional-fields{ animation-delay:.1s; }
 
-	/* Clean, non-empty style approach for shipping field */
+	/* Handle Shipping Card elegantly when active */
 	body.netfie-modern-checkout .woocommerce-shipping-fields {
 		background: transparent !important;
 		border: none !important;
@@ -1250,6 +1287,23 @@ function netfie_pay_checkout_ui_css() {
 		display:block;
 	}
 	body.netfie-modern-checkout .form-row{ margin-bottom:18px; }
+
+	body.netfie-modern-checkout .form-row-first,
+	body.netfie-modern-checkout .form-row-last {
+		width: 48% !important;
+		float: left !important;
+	}
+	body.netfie-modern-checkout .form-row-wide {
+		width: 100% !important;
+		clear: both !important;
+	}
+	body.netfie-modern-checkout .woocommerce-billing-fields__field-wrapper::after,
+	body.netfie-modern-checkout .woocommerce-shipping-fields__field-wrapper::after,
+	body.netfie-modern-checkout .form-row::after {
+		content: "";
+		display: table;
+		clear: both;
+	}
 
 	/* ---- Order review table ---- */
 	body.netfie-modern-checkout table.shop_table{
