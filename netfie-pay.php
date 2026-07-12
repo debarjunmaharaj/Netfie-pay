@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.7.0
+ * Version:     1.7.1
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.7.0' );
+define( 'NETFIE_PAY_VERSION', '1.7.1' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -1964,55 +1964,6 @@ function netfie_pay_conditional_paid_status( $statuses ) {
 		}
 	}
 	return $statuses;
-}
-
-/**
- * Append a green "Paid" status indicator next to the Payment Method Title
- * on customer My Account / View Order screen.
- */
-add_filter( 'woocommerce_order_get_payment_method_title', 'netfie_pay_modify_payment_method_title_frontend', 10, 2 );
-function netfie_pay_modify_payment_method_title_frontend( $title, $order ) {
-	if ( is_admin() || ! is_a( $order, 'WC_Order' ) ) {
-		return $title;
-	}
-
-	if ( $order->get_payment_method() === 'netfie_pay' ) {
-		$sender = $order->get_meta( '_netfie_sender_number' );
-		$txn    = $order->get_meta( '_netfie_transaction_id' );
-		if ( $sender && $txn ) {
-			$title .= ' <span class="netfie-payment-badge-paid">Paid</span>';
-		}
-	}
-	return $title;
-}
-
-/**
- * Print necessary custom styles for front-end view-order status elements.
- */
-add_action( 'wp_head', 'netfie_pay_view_order_styles' );
-function netfie_pay_view_order_styles() {
-	if ( ! is_account_page() ) {
-		return;
-	}
-	?>
-	<style id="netfie-pay-view-order-css">
-	.netfie-payment-badge-paid {
-		background-color: #10b981 !important;
-		color: #ffffff !important;
-		padding: 4px 10px !important;
-		border-radius: 6px !important;
-		font-size: 11px !important;
-		font-weight: 700 !important;
-		text-transform: uppercase !important;
-		display: inline-block !important;
-		margin-left: 8px !important;
-		line-height: 1.2 !important;
-		vertical-align: middle !important;
-		letter-spacing: 0.3px !important;
-		box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-	}
-	</style>
-	<?php
 }
 
 /* =========================================================================
