@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.3.0
+ * Version:     1.4.0
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.3.0' );
+define( 'NETFIE_PAY_VERSION', '1.4.0' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -684,91 +684,96 @@ function netfie_pay_init_gateway() {
 			#netfie-pay-box{ margin-top:4px; }
 
 			.netfie-select-btn{
-				display:flex; align-items:center; gap:10px; width:100%;
+				display:flex; align-items:center; gap:12px; width:100%;
 				background:linear-gradient(135deg,#6C2BD9,#54209f); color:#fff;
-				border:none; border-radius:10px; padding:14px 18px; font-size:15px; font-weight:600;
-				cursor:pointer; transition:transform .12s ease, box-shadow .18s ease;
+				border:none; border-radius:12px; padding:16px 20px; font-size:15px; font-weight:600;
+				cursor:pointer; box-shadow:0 4px 14px rgba(108,43,217,.2);
+				transition:all 0.2s ease;
 			}
-			.netfie-select-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(108,43,217,.28); }
+			.netfie-select-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 20px rgba(108,43,217,.3); }
 			.netfie-select-btn-icon{ font-size:18px; }
 			.netfie-select-btn-arrow{ margin-left:auto; font-size:20px; opacity:.85; }
 
 			.netfie-summary-card{
-				margin-top:14px; padding:16px; border-radius:12px;
-				background:#faf8ff; border:1.5px solid #e7dcfa; display:flex; gap:14px; align-items:flex-start;
-				animation:netfiePopIn .25s ease both;
+				margin-top:16px; padding:20px; border-radius:12px;
+				background:#fcfbfe; border:1.5px solid #e7dcfa; display:flex; gap:16px; align-items:flex-start;
+				animation:netfiePopIn .3s cubic-bezier(0.16, 1, 0.3, 1) both;
 			}
 			.netfie-summary-avatar{
-				width:44px; height:44px; border-radius:50%; background:#fff; border:1px solid #e7dcfa;
+				width:48px; height:48px; border-radius:50%; background:#fff; border:1.5px solid #e7dcfa;
 				display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;
 			}
 			.netfie-summary-avatar img{ max-width:70%; max-height:70%; object-fit:contain; }
-			.netfie-summary-title{ font-weight:700; font-size:15px; margin:0 0 4px; }
-			.netfie-summary-number{ font-size:14px; margin:0 0 4px; }
+			.netfie-summary-title{ font-weight:700; font-size:15px; margin:0 0 4px; color: #2a2438; }
+			.netfie-summary-number{ font-size:14px; margin:0 0 4px; color: #4a4458; }
 			.netfie-summary-number strong{ color:#6C2BD9; }
-			.netfie-summary-instructions{ font-size:13px; color:#7a7488; margin:0; }
+			.netfie-summary-instructions{ font-size:13px; color:#7a7488; margin:0; line-height: 1.4; }
 
-			.netfie-tx-fields{ margin-top:14px; animation:netfiePopIn .25s ease both; }
+			.netfie-tx-fields{
+				margin-top:16px; padding:20px; background:#f8fafc; border-radius:12px;
+				border:1.5px solid #e2e8f0; animation:netfiePopIn .3s cubic-bezier(0.16, 1, 0.3, 1) both;
+			}
 
 			.netfie-popup-overlay{
-				position:fixed; inset:0; z-index:100000; background:rgba(24,12,46,.55);
-				backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+				position:fixed; inset:0; z-index:999999; background:rgba(15, 23, 42, 0.6);
+				backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
 				display:flex; align-items:center; justify-content:center; padding:20px;
-				opacity:0; visibility:hidden; transition:opacity .2s ease, visibility .2s ease;
+				opacity:0; visibility:hidden; transition:all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 			}
 			.netfie-popup-overlay.is-open{ opacity:1; visibility:visible; }
 
 			.netfie-popup-panel{
-				background:#fff; width:100%; max-width:560px; max-height:85vh; overflow:auto;
-				border-radius:18px; box-shadow:0 30px 70px rgba(20,10,40,.35); position:relative;
-				transform:scale(.94) translateY(10px); opacity:0; transition:transform .22s ease, opacity .22s ease;
+				background:#fff; width:100%; max-width:580px; max-height:90vh; overflow-y:auto;
+				border-radius:20px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); position:relative;
+				transform:scale(.95) translateY(15px); transition:all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 			}
-			.netfie-popup-overlay.is-open .netfie-popup-panel{ transform:scale(1) translateY(0); opacity:1; }
+			.netfie-popup-overlay.is-open .netfie-popup-panel{ transform:scale(1) translateY(0); }
 
 			.netfie-popup-header{
 				display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-				padding:22px 24px 16px; position:sticky; top:0; background:#fff; border-bottom:1px solid #f0edf7; z-index:1;
+				padding:24px 24px 18px; position:sticky; top:0; background:#fff; border-bottom:1px solid #f1f5f9; z-index:1;
 			}
-			.netfie-popup-header h3{ margin:0 0 4px; font-size:19px; font-weight:700; }
-			.netfie-popup-subtitle{ margin:0; font-size:13px; color:#7a7488; }
+			.netfie-popup-header h3{ margin:0 0 4px; font-size:19px; font-weight:700; color: #0f172a; }
+			.netfie-popup-subtitle{ margin:0; font-size:13px; color:#64748b; }
 			.netfie-popup-close{
-				border:none; background:#f3f1fa; color:#4a4458; width:32px; height:32px; border-radius:50%;
-				font-size:18px; line-height:1; cursor:pointer; flex-shrink:0; transition:background .15s ease, transform .15s ease;
+				border:none; background:#f1f5f9; color:#475569; width:32px; height:32px; border-radius:50%;
+				font-size:18px; line-height:1; cursor:pointer; flex-shrink:0; transition:all .15s ease;
+				display: flex; align-items: center; justify-content: center;
 			}
-			.netfie-popup-close:hover{ background:#e7dcfa; transform:rotate(90deg); }
+			.netfie-popup-close:hover{ background:#e2e8f0; transform:rotate(90deg); color: #0f172a; }
 
 			.netfie-method-grid{
-				display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px 24px 24px;
+				display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:24px;
 			}
 			@media (max-width:480px){ .netfie-method-grid{ grid-template-columns:1fr; } }
 
 			.netfie-method-item{
-				position:relative; border:1.5px solid #ece8f7; border-radius:14px; padding:16px 14px;
-				display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px;
-				cursor:pointer; background:#fcfbfe; transition:border-color .15s ease, transform .12s ease, box-shadow .15s ease;
+				position:relative; border:1.5px solid #e2e8f0; border-radius:14px; padding:20px 16px;
+				display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;
+				cursor:pointer; background:#ffffff; transition:all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 			}
-			.netfie-method-item:hover{ border-color:#6C2BD9; transform:translateY(-2px); box-shadow:0 8px 20px rgba(108,43,217,.14); }
-			.netfie-method-item.is-selected{ border-color:#6C2BD9; background:#faf8ff; box-shadow:0 0 0 3px rgba(108,43,217,.12); }
+			.netfie-method-item:hover{ border-color:#6C2BD9; transform:translateY(-2px); box-shadow:0 10px 15px -3px rgba(108,43,217,.05); }
+			.netfie-method-item.is-selected{ border-color:#6C2BD9; background:#faf5ff; box-shadow:0 0 0 4px rgba(108,43,217,.1); }
 
 			.netfie-method-check{
-				position:absolute; top:8px; right:8px; width:20px; height:20px; border-radius:50%;
+				position:absolute; top:12px; right:12px; width:20px; height:20px; border-radius:50%;
 				background:#6C2BD9; color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;
-				opacity:0; transform:scale(.5); transition:opacity .15s ease, transform .15s ease;
+				opacity:0; transform:scale(.5); transition:all .15s cubic-bezier(0.16, 1, 0.3, 1);
 			}
 			.netfie-method-item.is-selected .netfie-method-check{ opacity:1; transform:scale(1); }
 
 			.netfie-method-avatar{
-				width:52px; height:52px; border-radius:50%; background:#fff; border:1px solid #ece8f7;
+				width:52px; height:52px; border-radius:50%; background:#fff; border:1px solid #e2e8f0;
 				display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:4px;
 			}
 			.netfie-method-avatar img{ max-width:65%; max-height:65%; object-fit:contain; }
 			.netfie-method-avatar-fallback{ font-weight:700; color:#6C2BD9; font-size:18px; }
 
-			.netfie-method-name{ font-weight:700; font-size:14px; }
-			.netfie-method-sub{ font-size:12px; color:#7a7488; }
+			.netfie-method-name{ font-weight:700; font-size:14px; color: #0f172a; }
+			.netfie-method-sub{ font-size:12px; color:#64748b; }
 
 			@keyframes netfiePopIn{
-				from{ opacity:0; transform:translateY(6px); }
+				from{ opacity:0; transform:translateY(8px); }
 				to{ opacity:1; transform:translateY(0); }
 			}
 			</style>
@@ -984,7 +989,17 @@ function netfie_pay_checkout_shortcode( $atts = array() ) {
 	$output = do_shortcode( '[woocommerce_checkout]' );
 
 	if ( netfie_pay_is_modern_checkout_enabled() ) {
-		$output = '<div class="netfie-checkout-fullwidth">' . $output . '</div>';
+		$header = '
+		<div class="netfie-checkout-header">
+			<div class="netfie-checkout-header-left">
+				<h1 class="netfie-checkout-title">Checkout</h1>
+				<p class="netfie-checkout-subtitle">Please review your billing details and select a secure payment method below.</p>
+			</div>
+			<div class="netfie-checkout-header-right">
+				<span class="netfie-badge-secure">🔒 Secure 256-Bit SSL Checkout</span>
+			</div>
+		</div>';
+		$output = '<div class="netfie-checkout-fullwidth">' . $header . $output . '</div>';
 	}
 
 	return $output;
@@ -1016,14 +1031,18 @@ function netfie_pay_checkout_ui_css() {
 	<style id="netfie-pay-checkout-ui">
 	:root{
 		--netfie-primary:#6C2BD9;
-		--netfie-primary-dark:#54209f;
+		--netfie-primary-dark:#4f1bb5;
 		--netfie-accent:#FF7A00;
-		--netfie-bg:#f6f5fb;
+		--netfie-bg:#f8fafc;
 		--netfie-card:#ffffff;
-		--netfie-border:#e7e4f2;
-		--netfie-text:#2a2438;
-		--netfie-muted:#7a7488;
-		--netfie-radius:14px;
+		--netfie-border:#e2e8f0;
+		--netfie-text:#0f172a;
+		--netfie-muted:#64748b;
+		--netfie-radius:16px;
+	}
+
+	body.netfie-modern-checkout {
+		overflow-x: hidden;
 	}
 
 	/* ---- Full width breakout ---- */
@@ -1050,78 +1069,156 @@ function netfie_pay_checkout_ui_css() {
 		margin:0 auto;
 		font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 		color:var(--netfie-text);
-	}
-
-	body.netfie-modern-checkout .netfie-checkout-fullwidth h2.netfie-checkout-title{
-		font-size:28px;
-		font-weight:700;
-		margin:0 0 28px;
-		letter-spacing:-.5px;
-	}
-
-	/* ---- Two column grid: details left, sticky order review right ---- */
-	body.netfie-modern-checkout .netfie-checkout-fullwidth form.woocommerce-checkout{
 		display:grid;
-		grid-template-columns:1fr 420px;
-		grid-template-rows:auto auto;
-		column-gap:36px;
+		grid-template-columns:1fr 450px;
+		column-gap:40px;
 		row-gap:0;
 		align-items:start;
 	}
+
+	@media (max-width:1024px){
+		body.netfie-modern-checkout .netfie-checkout-fullwidth form.woocommerce-checkout{
+			grid-template-columns:1fr;
+			gap:24px;
+		}
+	}
+
+	/* ---- Header Section ---- */
+	body.netfie-modern-checkout .netfie-checkout-header {
+		max-width: 1440px;
+		width: 100%;
+		margin: 0 auto 32px;
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-end;
+		flex-wrap: wrap;
+		gap: 16px;
+		border-bottom: 2px solid var(--netfie-border);
+		padding-bottom: 24px;
+	}
+	body.netfie-modern-checkout .netfie-checkout-header h1.netfie-checkout-title {
+		font-size: 32px;
+		font-weight: 800;
+		color: var(--netfie-text);
+		margin: 0 0 6px;
+		letter-spacing: -0.5px;
+		line-height: 1.2;
+	}
+	body.netfie-modern-checkout .netfie-checkout-header .netfie-checkout-subtitle {
+		font-size: 15px;
+		color: var(--netfie-muted);
+		margin: 0;
+	}
+	body.netfie-modern-checkout .netfie-checkout-header .netfie-badge-secure {
+		background: #e2e8f0;
+		color: var(--netfie-text);
+		padding: 8px 16px;
+		border-radius: 20px;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	/* ---- Column structure fixes ---- */
 	body.netfie-modern-checkout .netfie-checkout-fullwidth #customer_details{
 		grid-column:1;
-		grid-row:1 / span 2;
-	}
-	body.netfie-modern-checkout .netfie-checkout-fullwidth #order_review_heading{
-		grid-column:2;
-		grid-row:1;
-		margin-top:0;
 	}
 	body.netfie-modern-checkout .netfie-checkout-fullwidth #order_review{
 		grid-column:2;
-		grid-row:2;
 		position:sticky;
 		top:24px;
+		background:var(--netfie-card);
+		border:1px solid var(--netfie-border);
+		border-radius:var(--netfie-radius);
+		padding:32px;
+		box-shadow:0 10px 25px -5px rgba(0,0,0,0.02), 0 8px 10px -6px rgba(0,0,0,0.02);
+		animation:netfieFadeUp .5s ease both;
+		animation-delay:.15s;
 	}
-	@media (max-width:960px){
-		body.netfie-modern-checkout .netfie-checkout-fullwidth form.woocommerce-checkout{
-			display:block;
-		}
+	@media (max-width:1024px){
 		body.netfie-modern-checkout .netfie-checkout-fullwidth #order_review{
+			grid-column:1;
 			position:static;
-			margin-top:24px;
+			margin-top:0;
 		}
+	}
+
+	/* Prevent side-by-side floated layouts inside columns causing empty spaces */
+	body.netfie-modern-checkout .col-1,
+	body.netfie-modern-checkout .col-2 {
+		float: none !important;
+		width: 100% !important;
+		margin: 0 !important;
+		padding: 0 !important;
 	}
 
 	/* ---- Card sections ---- */
 	body.netfie-modern-checkout .woocommerce-billing-fields,
-	body.netfie-modern-checkout .woocommerce-shipping-fields,
-	body.netfie-modern-checkout .woocommerce-additional-fields,
-	body.netfie-modern-checkout #order_review{
+	body.netfie-modern-checkout .woocommerce-additional-fields {
 		background:var(--netfie-card);
 		border:1px solid var(--netfie-border);
 		border-radius:var(--netfie-radius);
-		padding:28px;
+		padding:32px;
 		margin-bottom:24px;
-		box-shadow:0 4px 24px rgba(40,20,90,.05);
+		box-shadow:0 10px 25px -5px rgba(0, 0, 0, 0.02);
 		animation:netfieFadeUp .5s ease both;
 	}
-	body.netfie-modern-checkout .woocommerce-shipping-fields{ animation-delay:.05s; }
 	body.netfie-modern-checkout .woocommerce-additional-fields{ animation-delay:.1s; }
-	body.netfie-modern-checkout #order_review{ animation-delay:.15s; }
 
-	body.netfie-modern-checkout h3#ship-to-different-address,
-	body.netfie-modern-checkout .woocommerce-billing-fields > h3,
-	body.netfie-modern-checkout .woocommerce-additional-fields > h3{
-		font-size:17px;
-		font-weight:700;
-		margin-top:0;
-		margin-bottom:18px;
-		padding-bottom:12px;
-		border-bottom:2px solid var(--netfie-bg);
+	/* Clean, non-empty style approach for shipping field */
+	body.netfie-modern-checkout .woocommerce-shipping-fields {
+		background: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		padding: 0 !important;
+		margin-bottom: 24px;
+	}
+	body.netfie-modern-checkout #ship-to-different-address {
+		background: var(--netfie-card);
+		border: 1px solid var(--netfie-border);
+		border-radius: var(--netfie-radius);
+		padding: 20px 24px;
+		margin-bottom: 0;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+	body.netfie-modern-checkout #ship-to-different-address label {
+		margin: 0;
+		display: inline-flex;
+		align-items: center;
+		cursor: pointer;
+		font-size: 16px;
+		font-weight: 700;
+		color: var(--netfie-text);
+	}
+	body.netfie-modern-checkout #ship-to-different-address input[type="checkbox"] {
+		margin: 0;
+		width: 18px;
+		height: 18px;
+		accent-color: var(--netfie-primary);
+	}
+	body.netfie-modern-checkout .shipping_address {
+		background: var(--netfie-card) !important;
+		border: 1px solid var(--netfie-border) !important;
+		border-radius: var(--netfie-radius) !important;
+		padding: 32px !important;
+		margin-top: 20px !important;
+		box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.02) !important;
 	}
 
-	/* ---- Inputs ---- */
+	body.netfie-modern-checkout .woocommerce-billing-fields > h3,
+	body.netfie-modern-checkout .woocommerce-additional-fields > h3{
+		font-size:18px;
+		font-weight:700;
+		margin-top:0;
+		margin-bottom:20px;
+		padding-bottom:14px;
+		border-bottom:2px solid var(--netfie-bg);
+		color: var(--netfie-text);
+	}
+
+	/* ---- Inputs & Fields ---- */
 	body.netfie-modern-checkout .input-text,
 	body.netfie-modern-checkout select,
 	body.netfie-modern-checkout textarea,
@@ -1152,101 +1249,215 @@ function netfie_pay_checkout_ui_css() {
 		margin-bottom:6px;
 		display:block;
 	}
-	body.netfie-modern-checkout .form-row{ margin-bottom:16px; }
+	body.netfie-modern-checkout .form-row{ margin-bottom:18px; }
 
 	/* ---- Order review table ---- */
 	body.netfie-modern-checkout table.shop_table{
 		border:none;
 		border-collapse:collapse;
 		width:100%;
+		margin-bottom: 24px;
 	}
-	body.netfie-modern-checkout table.shop_table th,
+	body.netfie-modern-checkout table.shop_table th{
+		font-size: 13px;
+		font-weight: 700;
+		text-transform: uppercase;
+		color: var(--netfie-muted);
+		letter-spacing: 0.5px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid #f1f5f9;
+	}
 	body.netfie-modern-checkout table.shop_table td{
 		border:none;
-		border-bottom:1px solid var(--netfie-bg);
-		padding:12px 0;
+		border-bottom:1px solid #f1f5f9;
+		padding:16px 0;
+		font-size:14px;
+		color: var(--netfie-text);
 	}
-	body.netfie-modern-checkout table.shop_table tfoot tr:last-child th,
-	body.netfie-modern-checkout table.shop_table tfoot tr:last-child td{
-		border-bottom:none;
-		font-size:18px;
-		font-weight:700;
-		color:var(--netfie-primary);
+	body.netfie-modern-checkout table.shop_table .cart_item td:first-child{
+		font-weight: 500;
+	}
+	body.netfie-modern-checkout table.shop_table .product-total{
+		text-align: right;
+		font-weight: 600;
+	}
+	body.netfie-modern-checkout table.shop_table tfoot th{
+		font-weight: 600;
+		color: var(--netfie-text);
+		padding: 14px 0;
+		border-bottom: 1px solid #f1f5f9;
+	}
+	body.netfie-modern-checkout table.shop_table tfoot td{
+		text-align: right;
+		font-weight: 600;
+		padding: 14px 0;
+		border-bottom: 1px solid #f1f5f9;
+	}
+	body.netfie-modern-checkout table.shop_table tfoot tr.order-total th{
+		font-size: 16px;
+		font-weight: 700;
+		color: var(--netfie-text);
+		border-bottom: none;
+	}
+	body.netfie-modern-checkout table.shop_table tfoot tr.order-total td{
+		font-size: 18px;
+		font-weight: 800;
+		color: var(--netfie-primary);
+		border-bottom: none;
 	}
 
 	/* ---- Payment methods list ---- */
+	body.netfie-modern-checkout #payment {
+		background: transparent !important;
+		padding: 0 !important;
+		border: none !important;
+	}
 	body.netfie-modern-checkout ul.wc_payment_methods{
 		list-style:none;
-		margin:0 0 16px;
-		padding:0;
+		margin:0 0 24px !important;
+		padding:0 !important;
 	}
 	body.netfie-modern-checkout ul.wc_payment_methods li.wc_payment_method{
-		border:1.5px solid var(--netfie-border);
-		border-radius:12px;
-		margin-bottom:10px;
-		padding:14px 16px;
-		transition:border-color .18s ease, box-shadow .18s ease, transform .12s ease;
-		background:#fcfcfe;
+		border:1.5px solid var(--netfie-border) !important;
+		border-radius:12px !important;
+		margin-bottom:12px !important;
+		padding:16px 18px !important;
+		transition:all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+		background:#f8fafc !important;
+		list-style: none !important;
 	}
 	body.netfie-modern-checkout ul.wc_payment_methods li.wc_payment_method:hover{
-		border-color:var(--netfie-primary);
-		transform:translateY(-1px);
+		border-color:#cbd5e1 !important;
 	}
 	body.netfie-modern-checkout ul.wc_payment_methods li.netfie-selected{
-		border-color:var(--netfie-primary);
-		box-shadow:0 0 0 4px rgba(108,43,217,.10);
-		background:#fff;
+		border-color:var(--netfie-primary) !important;
+		box-shadow:0 0 0 4px rgba(108,43,217,.08) !important;
+		background:#fff !important;
 	}
 	body.netfie-modern-checkout ul.wc_payment_methods li.wc_payment_method label{
 		font-weight:600;
+		font-size:15px !important;
+		color: var(--netfie-text) !important;
+		cursor: pointer !important;
+	}
+	body.netfie-modern-checkout ul.wc_payment_methods li.wc_payment_method input[type="radio"] {
+		margin-right: 10px !important;
+		accent-color: var(--netfie-primary) !important;
 	}
 	body.netfie-modern-checkout .payment_box{
-		background:var(--netfie-bg) !important;
-		border-radius:10px;
-		margin-top:10px !important;
+		background:#f1f5f9 !important;
+		border-radius:8px !important;
+		padding:16px !important;
+		margin-top:12px !important;
 		border:none !important;
+		font-size: 13.5px !important;
+		line-height: 1.5 !important;
+		color: var(--netfie-muted) !important;
 	}
 	body.netfie-modern-checkout .payment_box:before{ display:none; }
+
+	/* ---- Privacy & Terms Checklist ---- */
+	body.netfie-modern-checkout .woocommerce-privacy-policy-text {
+		font-size: 13px;
+		color: var(--netfie-muted);
+		line-height: 1.5;
+		margin-bottom: 16px;
+	}
+	body.netfie-modern-checkout .woocommerce-terms-and-conditions-wrapper {
+		margin-bottom: 24px;
+	}
+	body.netfie-modern-checkout .woocommerce-terms-and-conditions-wrapper label {
+		font-size: 13.5px;
+		font-weight: 500;
+		color: var(--netfie-text);
+		display: flex !important;
+		align-items: flex-start;
+		gap: 8px;
+		cursor: pointer;
+	}
+	body.netfie-modern-checkout .woocommerce-terms-and-conditions-wrapper input[type="checkbox"] {
+		margin-top: 3px;
+		accent-color: var(--netfie-primary);
+	}
 
 	/* ---- Place order button ---- */
 	body.netfie-modern-checkout #place_order{
 		width:100%;
-		background:linear-gradient(135deg,var(--netfie-primary),var(--netfie-accent)) !important;
+		background:linear-gradient(135deg, var(--netfie-primary), #ea580c) !important;
 		color:#fff !important;
 		border:none !important;
 		border-radius:12px !important;
-		padding:16px !important;
-		font-size:17px !important;
+		padding:18px 24px !important;
+		font-size:16px !important;
 		font-weight:700 !important;
-		letter-spacing:.2px;
-		cursor:pointer;
-		transition:transform .12s ease, box-shadow .2s ease, filter .2s ease;
-		box-shadow:0 10px 24px rgba(108,43,217,.25);
+		letter-spacing:.3px !important;
+		cursor:pointer !important;
+		transition:all .2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+		box-shadow:0 10px 25px -5px rgba(108,43,217,.3) !important;
 	}
 	body.netfie-modern-checkout #place_order:hover{
-		transform:translateY(-2px);
+		transform:translateY(-2px) !important;
+		box-shadow:0 15px 30px -5px rgba(108,43,217,.4) !important;
 		filter:brightness(1.05);
-		box-shadow:0 14px 28px rgba(108,43,217,.32);
 	}
 	body.netfie-modern-checkout #place_order:active{
-		transform:translateY(0);
+		transform:translateY(0) !important;
 	}
 
 	/* ---- Coupon box ---- */
 	body.netfie-modern-checkout .woocommerce-form-coupon-toggle .woocommerce-info{
-		border-radius:10px;
-		border-top-color:var(--netfie-primary);
+		background: #f1f5f9;
+		border: 1px solid #e2e8f0;
+		border-left: 4px solid var(--netfie-primary);
+		border-radius:12px;
+		color: var(--netfie-text);
+		padding: 16px 20px;
+		font-size: 14px;
+		font-weight: 500;
 	}
-	body.netfie-modern-checkout .woocommerce-form-coupon .button{
-		border-radius:10px !important;
-		background:var(--netfie-primary) !important;
+	body.netfie-modern-checkout .woocommerce-form-coupon-toggle .woocommerce-info a {
+		color: var(--netfie-primary);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	body.netfie-modern-checkout .woocommerce-form-coupon-toggle .woocommerce-info a:hover {
+		text-decoration: underline;
+	}
+	body.netfie-modern-checkout form.checkout_coupon {
+		background: var(--netfie-card);
+		border: 1px solid var(--netfie-border);
+		border-radius: var(--netfie-radius);
+		padding: 24px;
+		margin-bottom: 24px;
+		box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+	}
+	body.netfie-modern-checkout form.checkout_coupon .button {
+		border-radius: 10px !important;
+		background: var(--netfie-primary) !important;
+		padding: 12px 20px !important;
 	}
 
 	/* ---- Notices ---- */
 	body.netfie-modern-checkout .woocommerce-NoticeGroup .woocommerce-error,
 	body.netfie-modern-checkout .woocommerce-NoticeGroup .woocommerce-message{
-		border-radius:10px;
+		border-radius:12px !important;
+		padding:18px 24px !important;
+		font-size:14px !important;
+		font-weight:500 !important;
+		line-height:1.5 !important;
+		margin-bottom:24px !important;
+		border:1px solid rgba(0,0,0,0.05) !important;
 		animation:netfieFadeUp .3s ease both;
+	}
+	body.netfie-modern-checkout .woocommerce-NoticeGroup .woocommerce-error {
+		background-color: #fef2f2 !important;
+		border-left: 4px solid #ef4444 !important;
+		color: #991b1b !important;
+	}
+	body.netfie-modern-checkout .woocommerce-NoticeGroup .woocommerce-message {
+		background-color: #f0fdf4 !important;
+		border-left: 4px solid #22c55e !important;
+		color: #166534 !important;
 	}
 
 	/* ---- Processing overlay ---- */
@@ -1295,9 +1506,6 @@ function netfie_pay_checkout_ui_js() {
 			$('.woocommerce-additional-fields > h3').each(function(){
 				if ( ! $(this).find('.netfie-h-icon').length ) { $(this).prepend('<span class="netfie-h-icon">📝</span> '); }
 			});
-			$('#order_review_heading').each(function(){
-				if ( ! $(this).find('.netfie-h-icon').length ) { $(this).prepend('<span class="netfie-h-icon">🧾</span> '); }
-			});
 		}
 
 		function netfieAddSecureNote(){
@@ -1306,10 +1514,25 @@ function netfie_pay_checkout_ui_js() {
 				.append('<p class="netfie-secure-note">🔒 Secure checkout &mdash; your information is protected</p>');
 		}
 
+		// Dynamically hide shipping or additional notes card wrappers if they are empty
+		function netfieHideEmptyCards(){
+			$('.woocommerce-additional-fields').each(function(){
+				if ( $(this).find('input, textarea, select').length === 0 ) {
+					$(this).hide();
+				} else {
+					$(this).show();
+				}
+			});
+			if ( ! $('#ship-to-different-address-checkbox').is(':checked') ) {
+				$('.shipping_address').hide();
+			}
+		}
+
 		function netfieRunAll(){
 			netfieHighlightSelected();
 			netfieAddSectionIcons();
 			netfieAddSecureNote();
+			netfieHideEmptyCards();
 		}
 
 		$(document.body).on('updated_checkout payment_method_selected change', netfieRunAll);
@@ -1319,7 +1542,8 @@ function netfie_pay_checkout_ui_js() {
 	<style>
 	.netfie-h-icon{ margin-right:4px; }
 	.netfie-secure-note{
-		text-align:center; font-size:12.5px; color:#7a7488; margin:14px 0 0;
+		text-align:center; font-size:13px; font-weight:500; color:#64748b; margin:18px 0 0;
+		display: flex; align-items: center; justify-content: center; gap: 6px;
 	}
 	</style>
 	<?php
