@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.7.1
+ * Version:     1.8.0
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.7.1' );
+define( 'NETFIE_PAY_VERSION', '1.8.0' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -460,7 +460,7 @@ function netfie_pay_methods_page_html() {
 		font-size:14px; background:#fcfbfe; transition:border-color .15s ease, box-shadow .15s ease;
 	}
 	.netfie-field input:focus, .netfie-field select:focus, .netfie-field textarea:focus{
-		border-color:var(--nf-primary); box-shadow:0 0 0 3px rgba(108,43,217,.12); outline:none;
+		border-color:var(--nf-primary); box-shadow:0 0 0 3px rgba(108,43,217,.12) !important; outline:none;
 	}
 
 	.netfie-icon-uploader{ display:flex; align-items:center; gap:14px; }
@@ -1237,7 +1237,7 @@ function netfie_pay_init_gateway() {
 
 			return array(
 				'result'   => 'success',
-				'redirect' => $this->get_return_url( $order ),
+				'redirect' => 'https://netfie.com/my-account/orders/',
 			);
 		}
 	}
@@ -1250,18 +1250,12 @@ function netfie_pay_init_gateway() {
 }
 
 /**
- * Override the return/redirect URL if the admin set a custom one.
+ * Override the return/redirect URL if the admin set a custom one or default to the orders view.
  */
 add_filter( 'woocommerce_get_return_url', 'netfie_pay_custom_redirect', 10, 2 );
 function netfie_pay_custom_redirect( $return_url, $order ) {
 	if ( $order && $order->get_payment_method() === 'netfie_pay' ) {
-		$gateways = WC()->payment_gateways()->payment_gateways();
-		if ( isset( $gateways['netfie_pay'] ) ) {
-			$custom_url = $gateways['netfie_pay']->get_option( 'redirect_url' );
-			if ( ! empty( $custom_url ) ) {
-				return esc_url_raw( add_query_arg( 'order_id', $order->get_id(), $custom_url ) );
-			}
-		}
+		return 'https://netfie.com/my-account/orders/';
 	}
 	return $return_url;
 }
