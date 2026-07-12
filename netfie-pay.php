@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.1.0' );
+define( 'NETFIE_PAY_VERSION', '1.2.0' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -457,10 +457,16 @@ function netfie_pay_init_gateway() {
 			?>
 			<div id="netfie-pay-box">
 				<input type="hidden" name="netfie_method_id" id="netfie_method_id" value="">
-				<button type="button" class="button" id="netfie-open-popup">Select Payment Method</button>
-				<div id="netfie-selected-summary" style="display:none; margin-top:12px; padding:12px; border:1px solid #ddd; background:#fafafa;"></div>
 
-				<div id="netfie-fields" style="display:none; margin-top:12px;">
+				<button type="button" class="netfie-select-btn" id="netfie-open-popup">
+					<span class="netfie-select-btn-icon">💳</span>
+					<span id="netfie-open-popup-label">Select Payment Method</span>
+					<span class="netfie-select-btn-arrow">&rsaquo;</span>
+				</button>
+
+				<div id="netfie-selected-summary" class="netfie-summary-card" style="display:none;"></div>
+
+				<div id="netfie-fields" class="netfie-tx-fields" style="display:none;">
 					<p class="form-row form-row-wide">
 						<label>Your Sender Number <span class="required">*</span></label>
 						<input type="tel" name="netfie_sender_number" id="netfie_sender_number" class="input-text" placeholder="e.g. 01XXXXXXXXX">
@@ -473,26 +479,34 @@ function netfie_pay_init_gateway() {
 			</div>
 
 			<!-- Popup -->
-			<div id="netfie-popup-overlay" style="display:none; position:fixed; z-index:100000; inset:0; background:rgba(0,0,0,.5);">
-				<div style="background:#fff; max-width:420px; margin:60px auto; padding:20px; border-radius:6px; max-height:80vh; overflow:auto; position:relative;">
-					<button type="button" id="netfie-popup-close" style="position:absolute; top:10px; right:14px; border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
-					<h3>Choose a Payment Method</h3>
-					<div id="netfie-method-list">
+			<div id="netfie-popup-overlay" class="netfie-popup-overlay">
+				<div class="netfie-popup-panel" role="dialog" aria-modal="true" aria-label="Choose a payment method">
+					<div class="netfie-popup-header">
+						<div>
+							<h3>Choose a Payment Method</h3>
+							<p class="netfie-popup-subtitle">Select where you'll send the payment from</p>
+						</div>
+						<button type="button" id="netfie-popup-close" class="netfie-popup-close" aria-label="Close">&times;</button>
+					</div>
+					<div id="netfie-method-list" class="netfie-method-grid">
 						<?php foreach ( $methods as $id => $m ) : ?>
 							<div class="netfie-method-item"
+								tabindex="0"
 								data-id="<?php echo esc_attr( $id ); ?>"
 								data-name="<?php echo esc_attr( $m['name'] ); ?>"
 								data-number="<?php echo esc_attr( $m['number'] ); ?>"
 								data-type="<?php echo esc_attr( netfie_pay_account_type_label( $m['account_type'] ) ); ?>"
-								data-instructions="<?php echo esc_attr( $m['instructions'] ); ?>"
-								style="display:flex; align-items:center; gap:12px; padding:10px; border:1px solid #eee; margin-bottom:8px; cursor:pointer; border-radius:4px;">
-								<?php if ( ! empty( $m['icon'] ) ) : ?>
-									<img src="<?php echo esc_url( $m['icon'] ); ?>" style="height:36px; width:36px; object-fit:contain;">
-								<?php endif; ?>
-								<div>
-									<strong><?php echo esc_html( $m['name'] ); ?></strong><br>
-									<small><?php echo esc_html( netfie_pay_account_type_label( $m['account_type'] ) ); ?> &middot; <?php echo esc_html( $m['number'] ); ?></small>
-								</div>
+								data-instructions="<?php echo esc_attr( $m['instructions'] ); ?>">
+								<span class="netfie-method-check">✓</span>
+								<span class="netfie-method-avatar">
+									<?php if ( ! empty( $m['icon'] ) ) : ?>
+										<img src="<?php echo esc_url( $m['icon'] ); ?>" alt="<?php echo esc_attr( $m['name'] ); ?>">
+									<?php else : ?>
+										<span class="netfie-method-avatar-fallback"><?php echo esc_html( mb_substr( $m['name'], 0, 1 ) ); ?></span>
+									<?php endif; ?>
+								</span>
+								<span class="netfie-method-name"><?php echo esc_html( $m['name'] ); ?></span>
+								<span class="netfie-method-sub"><?php echo esc_html( netfie_pay_account_type_label( $m['account_type'] ) ); ?> &middot; <?php echo esc_html( $m['number'] ); ?></span>
 							</div>
 						<?php endforeach; ?>
 					</div>
@@ -500,35 +514,153 @@ function netfie_pay_init_gateway() {
 			</div>
 
 			<style>
-				#netfie-method-list .netfie-method-item:hover { background:#f5f5f5; border-color:#ccc; }
+			#netfie-pay-box{ margin-top:4px; }
+
+			.netfie-select-btn{
+				display:flex; align-items:center; gap:10px; width:100%;
+				background:linear-gradient(135deg,#6C2BD9,#54209f); color:#fff;
+				border:none; border-radius:10px; padding:14px 18px; font-size:15px; font-weight:600;
+				cursor:pointer; transition:transform .12s ease, box-shadow .18s ease;
+			}
+			.netfie-select-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(108,43,217,.28); }
+			.netfie-select-btn-icon{ font-size:18px; }
+			.netfie-select-btn-arrow{ margin-left:auto; font-size:20px; opacity:.85; }
+
+			.netfie-summary-card{
+				margin-top:14px; padding:16px; border-radius:12px;
+				background:#faf8ff; border:1.5px solid #e7dcfa; display:flex; gap:14px; align-items:flex-start;
+				animation:netfiePopIn .25s ease both;
+			}
+			.netfie-summary-avatar{
+				width:44px; height:44px; border-radius:50%; background:#fff; border:1px solid #e7dcfa;
+				display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;
+			}
+			.netfie-summary-avatar img{ max-width:70%; max-height:70%; object-fit:contain; }
+			.netfie-summary-title{ font-weight:700; font-size:15px; margin:0 0 4px; }
+			.netfie-summary-number{ font-size:14px; margin:0 0 4px; }
+			.netfie-summary-number strong{ color:#6C2BD9; }
+			.netfie-summary-instructions{ font-size:13px; color:#7a7488; margin:0; }
+
+			.netfie-tx-fields{ margin-top:14px; animation:netfiePopIn .25s ease both; }
+
+			.netfie-popup-overlay{
+				position:fixed; inset:0; z-index:100000; background:rgba(24,12,46,.55);
+				backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+				display:flex; align-items:center; justify-content:center; padding:20px;
+				opacity:0; visibility:hidden; transition:opacity .2s ease, visibility .2s ease;
+			}
+			.netfie-popup-overlay.is-open{ opacity:1; visibility:visible; }
+
+			.netfie-popup-panel{
+				background:#fff; width:100%; max-width:560px; max-height:85vh; overflow:auto;
+				border-radius:18px; box-shadow:0 30px 70px rgba(20,10,40,.35); position:relative;
+				transform:scale(.94) translateY(10px); opacity:0; transition:transform .22s ease, opacity .22s ease;
+			}
+			.netfie-popup-overlay.is-open .netfie-popup-panel{ transform:scale(1) translateY(0); opacity:1; }
+
+			.netfie-popup-header{
+				display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+				padding:22px 24px 16px; position:sticky; top:0; background:#fff; border-bottom:1px solid #f0edf7; z-index:1;
+			}
+			.netfie-popup-header h3{ margin:0 0 4px; font-size:19px; font-weight:700; }
+			.netfie-popup-subtitle{ margin:0; font-size:13px; color:#7a7488; }
+			.netfie-popup-close{
+				border:none; background:#f3f1fa; color:#4a4458; width:32px; height:32px; border-radius:50%;
+				font-size:18px; line-height:1; cursor:pointer; flex-shrink:0; transition:background .15s ease, transform .15s ease;
+			}
+			.netfie-popup-close:hover{ background:#e7dcfa; transform:rotate(90deg); }
+
+			.netfie-method-grid{
+				display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px 24px 24px;
+			}
+			@media (max-width:480px){ .netfie-method-grid{ grid-template-columns:1fr; } }
+
+			.netfie-method-item{
+				position:relative; border:1.5px solid #ece8f7; border-radius:14px; padding:16px 14px;
+				display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px;
+				cursor:pointer; background:#fcfbfe; transition:border-color .15s ease, transform .12s ease, box-shadow .15s ease;
+			}
+			.netfie-method-item:hover{ border-color:#6C2BD9; transform:translateY(-2px); box-shadow:0 8px 20px rgba(108,43,217,.14); }
+			.netfie-method-item.is-selected{ border-color:#6C2BD9; background:#faf8ff; box-shadow:0 0 0 3px rgba(108,43,217,.12); }
+
+			.netfie-method-check{
+				position:absolute; top:8px; right:8px; width:20px; height:20px; border-radius:50%;
+				background:#6C2BD9; color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;
+				opacity:0; transform:scale(.5); transition:opacity .15s ease, transform .15s ease;
+			}
+			.netfie-method-item.is-selected .netfie-method-check{ opacity:1; transform:scale(1); }
+
+			.netfie-method-avatar{
+				width:52px; height:52px; border-radius:50%; background:#fff; border:1px solid #ece8f7;
+				display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:4px;
+			}
+			.netfie-method-avatar img{ max-width:65%; max-height:65%; object-fit:contain; }
+			.netfie-method-avatar-fallback{ font-weight:700; color:#6C2BD9; font-size:18px; }
+
+			.netfie-method-name{ font-weight:700; font-size:14px; }
+			.netfie-method-sub{ font-size:12px; color:#7a7488; }
+
+			@keyframes netfiePopIn{
+				from{ opacity:0; transform:translateY(6px); }
+				to{ opacity:1; transform:translateY(0); }
+			}
 			</style>
+
 			<script>
 			(function($){
-				$(document).off('click.netfie').on('click.netfie', '#netfie-open-popup', function(){
-					$('#netfie-popup-overlay').fadeIn(150);
+				function netfieOpenPopup(){
+					$('#netfie-popup-overlay').addClass('is-open');
+					$('body').css('overflow','hidden');
+				}
+				function netfieClosePopup(){
+					$('#netfie-popup-overlay').removeClass('is-open');
+					$('body').css('overflow','');
+				}
+
+				$(document).off('.netfie');
+
+				$(document).on('click.netfie', '#netfie-open-popup', function(){
+					netfieOpenPopup();
 				});
-				$(document).on('click', '#netfie-popup-close, #netfie-popup-overlay', function(e){
-					if (e.target === this) { $('#netfie-popup-overlay').fadeOut(150); }
+				$(document).on('click.netfie', '#netfie-popup-close', function(){
+					netfieClosePopup();
 				});
-				$(document).on('click', '.netfie-method-item', function(){
+				$(document).on('click.netfie', '#netfie-popup-overlay', function(e){
+					if ( e.target === this ) { netfieClosePopup(); }
+				});
+				$(document).on('keydown.netfie', function(e){
+					if ( e.key === 'Escape' ) { netfieClosePopup(); }
+				});
+
+				$(document).on('click.netfie keydown.netfie', '.netfie-method-item', function(e){
+					if ( e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ' ) { return; }
+					e.preventDefault();
+
 					var $el = $(this);
 					var id = $el.data('id');
 					var name = $el.data('name');
 					var number = $el.data('number');
 					var type = $el.data('type');
 					var instructions = $el.data('instructions');
+					var iconHtml = $el.find('.netfie-method-avatar').html();
+
+					$('.netfie-method-item').removeClass('is-selected');
+					$el.addClass('is-selected');
 
 					$('#netfie_method_id').val(id);
 
-					var html = '<strong>' + name + '</strong> (' + type + ')<br>' +
-						'Send payment to: <strong>' + number + '</strong>';
-					if (instructions) {
-						html += '<br><em>' + instructions + '</em>';
-					}
+					var html = '<span class="netfie-summary-avatar">' + iconHtml + '</span>' +
+						'<div>' +
+							'<p class="netfie-summary-title">' + name + ' &middot; ' + type + '</p>' +
+							'<p class="netfie-summary-number">Send payment to: <strong>' + number + '</strong></p>' +
+							( instructions ? '<p class="netfie-summary-instructions">' + instructions + '</p>' : '' ) +
+						'</div>';
+
 					$('#netfie-selected-summary').html(html).show();
 					$('#netfie-fields').show();
-					$('#netfie-open-popup').text('Change Payment Method');
-					$('#netfie-popup-overlay').fadeOut(150);
+					$('#netfie-open-popup-label').text('Change: ' + name);
+
+					setTimeout(netfieClosePopup, 180);
 				});
 			})(jQuery);
 			</script>
@@ -900,34 +1032,6 @@ function netfie_pay_checkout_ui_css() {
 	}
 	body.netfie-modern-checkout .payment_box:before{ display:none; }
 
-	/* Netfie method popup items adopt the same accent */
-	body.netfie-modern-checkout .netfie-method-item{
-		border-radius:10px !important;
-		transition:border-color .18s ease, transform .12s ease, background .18s ease;
-	}
-	body.netfie-modern-checkout .netfie-method-item:hover{
-		border-color:var(--netfie-primary) !important;
-		transform:translateY(-1px);
-	}
-	body.netfie-modern-checkout #netfie-open-popup{
-		background:linear-gradient(135deg,var(--netfie-primary),var(--netfie-primary-dark));
-		color:#fff;
-		border:none;
-		border-radius:10px;
-		padding:12px 20px;
-		font-weight:600;
-		cursor:pointer;
-		transition:transform .12s ease, box-shadow .18s ease;
-	}
-	body.netfie-modern-checkout #netfie-open-popup:hover{
-		transform:translateY(-1px);
-		box-shadow:0 8px 20px rgba(108,43,217,.28);
-	}
-	body.netfie-modern-checkout #netfie-popup-overlay > div{
-		border-radius:16px !important;
-		animation:netfieFadeUp .25s ease both;
-	}
-
 	/* ---- Place order button ---- */
 	body.netfie-modern-checkout #place_order{
 		width:100%;
@@ -1007,12 +1111,41 @@ function netfie_pay_checkout_ui_js() {
 			$('ul.wc_payment_methods input[name="payment_method"]:checked')
 				.closest('li.wc_payment_method').addClass('netfie-selected');
 		}
-		$(document.body).on('updated_checkout payment_method_selected change', function(){
+
+		function netfieAddSectionIcons(){
+			$('.woocommerce-billing-fields > h3').each(function(){
+				if ( ! $(this).find('.netfie-h-icon').length ) { $(this).prepend('<span class="netfie-h-icon">👤</span> '); }
+			});
+			$('.woocommerce-additional-fields > h3').each(function(){
+				if ( ! $(this).find('.netfie-h-icon').length ) { $(this).prepend('<span class="netfie-h-icon">📝</span> '); }
+			});
+			$('#order_review_heading').each(function(){
+				if ( ! $(this).find('.netfie-h-icon').length ) { $(this).prepend('<span class="netfie-h-icon">🧾</span> '); }
+			});
+		}
+
+		function netfieAddSecureNote(){
+			if ( $('.netfie-secure-note').length ) { return; }
+			$('.woocommerce-checkout-payment, #payment').last()
+				.append('<p class="netfie-secure-note">🔒 Secure checkout &mdash; your information is protected</p>');
+		}
+
+		function netfieRunAll(){
 			netfieHighlightSelected();
-		});
-		$(document).ready(netfieHighlightSelected);
+			netfieAddSectionIcons();
+			netfieAddSecureNote();
+		}
+
+		$(document.body).on('updated_checkout payment_method_selected change', netfieRunAll);
+		$(document).ready(netfieRunAll);
 	})(jQuery);
 	</script>
+	<style>
+	.netfie-h-icon{ margin-right:4px; }
+	.netfie-secure-note{
+		text-align:center; font-size:12.5px; color:#7a7488; margin:14px 0 0;
+	}
+	</style>
 	<?php
 }
 
