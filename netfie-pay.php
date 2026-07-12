@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.2.0' );
+define( 'NETFIE_PAY_VERSION', '1.3.0' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -183,176 +183,343 @@ function netfie_pay_methods_page_html() {
 		return;
 	}
 
-	$methods    = netfie_pay_get_methods();
-	$edit_id    = isset( $_GET['edit'] ) ? sanitize_key( $_GET['edit'] ) : '';
-	$editing    = $edit_id ? netfie_pay_get_method( $edit_id ) : false;
-	$statuses   = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_statuses() : array();
+	$methods     = netfie_pay_get_methods();
+	$edit_id     = isset( $_GET['edit'] ) ? sanitize_key( $_GET['edit'] ) : '';
+	$editing     = $edit_id ? netfie_pay_get_method( $edit_id ) : false;
+	$statuses    = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_statuses() : array();
 	$gateway_url = admin_url( 'admin.php?page=wc-settings&tab=checkout&section=netfie_pay' );
+	$enabled_count = count( netfie_pay_get_enabled_methods() );
+	$total_count   = count( $methods );
 	?>
-	<div class="wrap">
-		<h1>Netfie Pay &mdash; Payment Methods</h1>
-		<p>Add your Bangladeshi mobile banking methods (bKash, Nagad, Rocket, Upay, etc.) below. Then enable the gateway and set the checkout title/description on the
-			<a href="<?php echo esc_url( $gateway_url ); ?>">WooCommerce Payments settings page</a>.</p>
+	<div class="wrap netfie-admin-wrap">
+
+		<div class="netfie-admin-header">
+			<div class="netfie-admin-header-brand">
+				<span class="netfie-admin-logo">N</span>
+				<div>
+					<h1>Netfie Pay</h1>
+					<p>Manual mobile banking payments for WooCommerce &mdash; bKash, Nagad, Rocket & more.</p>
+				</div>
+			</div>
+			<div class="netfie-admin-header-stats">
+				<div class="netfie-stat"><span class="netfie-stat-num"><?php echo (int) $enabled_count; ?></span><span class="netfie-stat-label">Active Methods</span></div>
+				<div class="netfie-stat"><span class="netfie-stat-num"><?php echo (int) $total_count; ?></span><span class="netfie-stat-label">Total Methods</span></div>
+				<a href="<?php echo esc_url( $gateway_url ); ?>" class="button button-primary netfie-header-btn">Gateway Settings</a>
+			</div>
+		</div>
+
+		<p class="netfie-admin-intro">Add your Bangladeshi mobile banking methods below, then place <code>[netfie-woocommerce_checkout]</code> on your Checkout page instead of the default <code>[woocommerce_checkout]</code> shortcode to use Netfie Pay's checkout experience.</p>
 
 		<?php if ( isset( $_GET['saved'] ) ) : ?>
-			<div class="notice notice-success"><p>Payment method saved.</p></div>
+			<div class="notice notice-success is-dismissible"><p>Payment method saved.</p></div>
 		<?php endif; ?>
 		<?php if ( isset( $_GET['deleted'] ) ) : ?>
-			<div class="notice notice-success"><p>Payment method deleted.</p></div>
+			<div class="notice notice-success is-dismissible"><p>Payment method deleted.</p></div>
 		<?php endif; ?>
 		<?php if ( isset( $_GET['ui_saved'] ) ) : ?>
-			<div class="notice notice-success"><p>Checkout UI setting saved.</p></div>
+			<div class="notice notice-success is-dismissible"><p>Checkout UI setting saved.</p></div>
 		<?php endif; ?>
 
-		<div style="background:#fff; border:1px solid #ccd0d4; padding:16px 20px; margin-top:20px; max-width:900px;">
-			<h2 style="margin-top:0;">Checkout Page Design</h2>
+		<div class="netfie-card netfie-ui-card">
+			<div class="netfie-card-head">
+				<span class="netfie-card-icon">🎨</span>
+				<div>
+					<h2>Checkout Page Design</h2>
+					<p>Controls the look of the <code>[netfie-woocommerce_checkout]</code> shortcode.</p>
+				</div>
+			</div>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<?php wp_nonce_field( 'netfie_pay_save_ui' ); ?>
 				<input type="hidden" name="action" value="netfie_pay_save_ui">
-				<label>
-					<input type="checkbox" name="modern_checkout" value="1" <?php checked( netfie_pay_is_modern_checkout_enabled() ); ?>>
-					Enable modern, animated, full-width design for the checkout page (<code>[woocommerce_checkout]</code>)
+				<label class="netfie-toggle-row">
+					<span class="netfie-toggle">
+						<input type="checkbox" name="modern_checkout" value="1" <?php checked( netfie_pay_is_modern_checkout_enabled() ); ?>>
+						<span class="netfie-toggle-slider"></span>
+					</span>
+					<span>Enable modern, animated, full-width checkout design</span>
 				</label>
-				<p class="description">Restyles the standard WooCommerce checkout with a modern two-column layout, card-style sections, animations, and a full-width layout. No content or functionality changes &mdash; purely visual. Turn off any time if it conflicts with your theme.</p>
-				<p><button type="submit" class="button button-primary">Save</button></p>
+				<p class="description">Renders a two-column, card-style, animated checkout with a full-width layout when customers use the <code>[netfie-woocommerce_checkout]</code> shortcode. Purely visual &mdash; no content or functionality changes. Turn off any time if it conflicts with your theme.</p>
+				<button type="submit" class="button button-primary">Save Design Setting</button>
 			</form>
 		</div>
 
-		<div style="display:flex; gap:30px; align-items:flex-start; margin-top:20px;">
+		<div class="netfie-columns">
 
-			<div style="flex:1; max-width:420px; background:#fff; border:1px solid #ccd0d4; padding:20px;">
-				<h2><?php echo $editing ? 'Edit Method' : 'Add New Method'; ?></h2>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<div class="netfie-card netfie-form-card">
+				<div class="netfie-card-head">
+					<span class="netfie-card-icon"><?php echo $editing ? '✏️' : '➕'; ?></span>
+					<div><h2><?php echo $editing ? 'Edit Method' : 'Add New Method'; ?></h2></div>
+				</div>
+
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="netfie-form">
 					<?php wp_nonce_field( 'netfie_pay_save_method' ); ?>
 					<input type="hidden" name="action" value="netfie_pay_save_method">
 					<input type="hidden" name="method_id" value="<?php echo esc_attr( $edit_id ); ?>">
 
-					<table class="form-table">
-						<tr>
-							<th><label>Method Name</label></th>
-							<td><input type="text" name="method_name" class="regular-text" required
-								placeholder="e.g. bKash"
-								value="<?php echo $editing ? esc_attr( $editing['name'] ) : ''; ?>"></td>
-						</tr>
-						<tr>
-							<th><label>Icon / Logo</label></th>
-							<td>
-								<input type="hidden" id="netfie_method_icon" name="method_icon"
-									value="<?php echo $editing ? esc_url( $editing['icon'] ) : ''; ?>">
-								<div id="netfie_icon_preview" style="margin-bottom:8px;">
-									<?php if ( $editing && $editing['icon'] ) : ?>
-										<img src="<?php echo esc_url( $editing['icon'] ); ?>" style="max-height:50px;">
-									<?php endif; ?>
-								</div>
-								<button type="button" class="button" id="netfie_upload_icon_btn">Select / Upload Icon</button>
-							</td>
-						</tr>
-						<tr>
-							<th><label>Mobile Number</label></th>
-							<td><input type="text" name="method_number" class="regular-text" required
-								placeholder="e.g. 01XXXXXXXXX"
-								value="<?php echo $editing ? esc_attr( $editing['number'] ) : ''; ?>"></td>
-						</tr>
-						<tr>
-							<th><label>Account Type</label></th>
-							<td>
-								<select name="account_type">
-									<?php
-									$current_type = $editing ? $editing['account_type'] : 'personal';
-									foreach ( array( 'personal', 'agent', 'merchant' ) as $type ) {
-										printf(
-											'<option value="%1$s" %2$s>%3$s</option>',
-											esc_attr( $type ),
-											selected( $current_type, $type, false ),
-											esc_html( netfie_pay_account_type_label( $type ) )
-										);
-									}
-									?>
-								</select>
-							</td>
-						</tr>
-						<tr>
-							<th><label>Order Status After Checkout</label></th>
-							<td>
-								<select name="order_status">
-									<?php
-									$current_status = $editing ? $editing['order_status'] : 'wc-on-hold';
-									if ( strpos( $current_status, 'wc-' ) !== 0 ) {
-										$current_status = 'wc-' . $current_status;
-									}
-									foreach ( $statuses as $key => $label ) {
-										printf(
-											'<option value="%1$s" %2$s>%3$s</option>',
-											esc_attr( $key ),
-											selected( $current_status, $key, false ),
-											esc_html( $label )
-										);
-									}
-									?>
-								</select>
-								<p class="description">Order status set once the customer submits the sender number & transaction ID for this method.</p>
-							</td>
-						</tr>
-						<tr>
-							<th><label>Instructions</label></th>
-							<td><textarea name="instructions" rows="3" class="large-text"
-								placeholder="e.g. Send Money to this number, then enter your number & Transaction ID below."><?php echo $editing ? esc_textarea( $editing['instructions'] ) : ''; ?></textarea></td>
-						</tr>
-						<tr>
-							<th><label>Enabled</label></th>
-							<td><label><input type="checkbox" name="enabled" value="1"
-								<?php checked( $editing ? ! empty( $editing['enabled'] ) : true ); ?>> Show this method at checkout</label></td>
-						</tr>
-					</table>
+					<div class="netfie-field">
+						<label>Method Name</label>
+						<input type="text" name="method_name" required
+							placeholder="e.g. bKash"
+							value="<?php echo $editing ? esc_attr( $editing['name'] ) : ''; ?>">
+					</div>
 
-					<p class="submit">
+					<div class="netfie-field">
+						<label>Icon / Logo</label>
+						<div class="netfie-icon-uploader">
+							<div id="netfie_icon_preview" class="netfie-icon-preview">
+								<?php if ( $editing && $editing['icon'] ) : ?>
+									<img src="<?php echo esc_url( $editing['icon'] ); ?>">
+								<?php else : ?>
+									<span class="netfie-icon-placeholder">＋</span>
+								<?php endif; ?>
+							</div>
+							<input type="hidden" id="netfie_method_icon" name="method_icon"
+								value="<?php echo $editing ? esc_url( $editing['icon'] ) : ''; ?>">
+							<button type="button" class="button" id="netfie_upload_icon_btn">Select / Upload Icon</button>
+						</div>
+					</div>
+
+					<div class="netfie-field">
+						<label>Mobile Number</label>
+						<input type="text" name="method_number" required
+							placeholder="e.g. 01XXXXXXXXX"
+							value="<?php echo $editing ? esc_attr( $editing['number'] ) : ''; ?>">
+					</div>
+
+					<div class="netfie-field">
+						<label>Account Type</label>
+						<select name="account_type">
+							<?php
+							$current_type = $editing ? $editing['account_type'] : 'personal';
+							foreach ( array( 'personal', 'agent', 'merchant' ) as $type ) {
+								printf(
+									'<option value="%1$s" %2$s>%3$s</option>',
+									esc_attr( $type ),
+									selected( $current_type, $type, false ),
+									esc_html( netfie_pay_account_type_label( $type ) )
+								);
+							}
+							?>
+						</select>
+					</div>
+
+					<div class="netfie-field">
+						<label>Order Status After Checkout</label>
+						<select name="order_status">
+							<?php
+							$current_status = $editing ? $editing['order_status'] : 'wc-on-hold';
+							if ( strpos( $current_status, 'wc-' ) !== 0 ) {
+								$current_status = 'wc-' . $current_status;
+							}
+							foreach ( $statuses as $key => $label ) {
+								printf(
+									'<option value="%1$s" %2$s>%3$s</option>',
+									esc_attr( $key ),
+									selected( $current_status, $key, false ),
+									esc_html( $label )
+								);
+							}
+							?>
+						</select>
+						<p class="description">Set once the customer submits the sender number & transaction ID for this method.</p>
+					</div>
+
+					<div class="netfie-field">
+						<label>Instructions</label>
+						<textarea name="instructions" rows="3"
+							placeholder="e.g. Send Money to this number, then enter your number & Transaction ID below."><?php echo $editing ? esc_textarea( $editing['instructions'] ) : ''; ?></textarea>
+					</div>
+
+					<div class="netfie-field">
+						<label class="netfie-toggle-row">
+							<span class="netfie-toggle">
+								<input type="checkbox" name="enabled" value="1"
+									<?php checked( $editing ? ! empty( $editing['enabled'] ) : true ); ?>>
+								<span class="netfie-toggle-slider"></span>
+							</span>
+							<span>Show this method at checkout</span>
+						</label>
+					</div>
+
+					<div class="netfie-form-actions">
 						<button type="submit" class="button button-primary"><?php echo $editing ? 'Update Method' : 'Add Method'; ?></button>
 						<?php if ( $editing ) : ?>
 							<a href="<?php echo esc_url( admin_url( 'admin.php?page=netfie-pay-methods' ) ); ?>" class="button">Cancel</a>
 						<?php endif; ?>
-					</p>
+					</div>
 				</form>
 			</div>
 
-			<div style="flex:2;">
-				<h2>Existing Methods</h2>
-				<table class="widefat striped">
-					<thead>
-						<tr>
-							<th style="width:60px;">Icon</th>
-							<th>Name</th>
-							<th>Number</th>
-							<th>Account Type</th>
-							<th>Order Status</th>
-							<th>Enabled</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-					<?php if ( empty( $methods ) ) : ?>
-						<tr><td colspan="7">No payment methods added yet.</td></tr>
-					<?php else : ?>
+			<div class="netfie-card netfie-list-card">
+				<div class="netfie-card-head">
+					<span class="netfie-card-icon">📋</span>
+					<div><h2>Existing Methods</h2></div>
+				</div>
+
+				<?php if ( empty( $methods ) ) : ?>
+					<div class="netfie-empty-state">
+						<span>🏦</span>
+						<p>No payment methods added yet. Use the form to add your first one, e.g. bKash.</p>
+					</div>
+				<?php else : ?>
+					<table class="netfie-table">
+						<thead>
+							<tr>
+								<th>Method</th>
+								<th>Number</th>
+								<th>Type</th>
+								<th>Order Status</th>
+								<th>Status</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
 						<?php foreach ( $methods as $id => $m ) : ?>
 							<tr>
-								<td><?php if ( ! empty( $m['icon'] ) ) : ?><img src="<?php echo esc_url( $m['icon'] ); ?>" style="max-height:32px;"><?php endif; ?></td>
-								<td><strong><?php echo esc_html( $m['name'] ); ?></strong></td>
-								<td><?php echo esc_html( $m['number'] ); ?></td>
-								<td><?php echo esc_html( netfie_pay_account_type_label( $m['account_type'] ) ); ?></td>
-								<td><?php echo esc_html( isset( $statuses[ $m['order_status'] ] ) ? $statuses[ $m['order_status'] ] : $m['order_status'] ); ?></td>
-								<td><?php echo ! empty( $m['enabled'] ) ? '✅' : '—'; ?></td>
 								<td>
-									<a href="<?php echo esc_url( admin_url( 'admin.php?page=netfie-pay-methods&edit=' . $id ) ); ?>">Edit</a> |
+									<div class="netfie-method-cell">
+										<span class="netfie-method-cell-icon">
+											<?php if ( ! empty( $m['icon'] ) ) : ?>
+												<img src="<?php echo esc_url( $m['icon'] ); ?>">
+											<?php else : ?>
+												<?php echo esc_html( mb_substr( $m['name'], 0, 1 ) ); ?>
+											<?php endif; ?>
+										</span>
+										<strong><?php echo esc_html( $m['name'] ); ?></strong>
+									</div>
+								</td>
+								<td><?php echo esc_html( $m['number'] ); ?></td>
+								<td><span class="netfie-pill netfie-pill-<?php echo esc_attr( $m['account_type'] ); ?>"><?php echo esc_html( netfie_pay_account_type_label( $m['account_type'] ) ); ?></span></td>
+								<td><?php echo esc_html( isset( $statuses[ $m['order_status'] ] ) ? $statuses[ $m['order_status'] ] : $m['order_status'] ); ?></td>
+								<td>
+									<?php if ( ! empty( $m['enabled'] ) ) : ?>
+										<span class="netfie-pill netfie-pill-on">Active</span>
+									<?php else : ?>
+										<span class="netfie-pill netfie-pill-off">Disabled</span>
+									<?php endif; ?>
+								</td>
+								<td class="netfie-actions-cell">
+									<a href="<?php echo esc_url( admin_url( 'admin.php?page=netfie-pay-methods&edit=' . $id ) ); ?>" class="netfie-action-link">Edit</a>
 									<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=netfie_pay_delete_method&id=' . $id ), 'netfie_pay_delete_method' ) ); ?>"
+										class="netfie-action-link netfie-action-danger"
 										onclick="return confirm('Delete this method?');">Delete</a>
 								</td>
 							</tr>
 						<?php endforeach; ?>
-					<?php endif; ?>
-					</tbody>
-				</table>
+						</tbody>
+					</table>
+				<?php endif; ?>
 			</div>
 		</div>
 	</div>
+
+	<style>
+	.netfie-admin-wrap{ --nf-primary:#6C2BD9; --nf-primary-dark:#54209f; --nf-accent:#FF7A00; --nf-bg:#f6f5fb; --nf-border:#e7e4f2; --nf-text:#2a2438; --nf-muted:#7a7488; max-width:1300px; }
+	.netfie-admin-wrap *{ box-sizing:border-box; }
+
+	.netfie-admin-header{
+		display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;
+		background:linear-gradient(135deg,var(--nf-primary),var(--nf-primary-dark));
+		color:#fff; border-radius:16px; padding:26px 28px; margin:18px 0 20px;
+	}
+	.netfie-admin-header-brand{ display:flex; align-items:center; gap:16px; }
+	.netfie-admin-logo{
+		width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.18);
+		display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800;
+	}
+	.netfie-admin-header h1{ color:#fff; margin:0 0 4px; font-size:22px; padding:0; }
+	.netfie-admin-header p{ margin:0; opacity:.85; font-size:13px; }
+	.netfie-admin-header-stats{ display:flex; align-items:center; gap:22px; }
+	.netfie-stat{ text-align:center; }
+	.netfie-stat-num{ display:block; font-size:22px; font-weight:800; }
+	.netfie-stat-label{ font-size:11px; opacity:.8; text-transform:uppercase; letter-spacing:.4px; }
+	.netfie-header-btn{ background:#fff !important; color:var(--nf-primary) !important; border:none !important; font-weight:700 !important; }
+
+	.netfie-admin-intro{ max-width:900px; color:var(--nf-muted); }
+	.netfie-admin-intro code{ background:#efe9fb; color:var(--nf-primary-dark); padding:2px 6px; border-radius:5px; }
+
+	.netfie-card{
+		background:#fff; border:1px solid var(--nf-border); border-radius:14px; padding:22px 24px;
+		box-shadow:0 4px 18px rgba(40,20,90,.05); margin-bottom:22px;
+	}
+	.netfie-card-head{ display:flex; align-items:flex-start; gap:12px; margin-bottom:16px; }
+	.netfie-card-icon{ font-size:22px; }
+	.netfie-card-head h2{ margin:0 0 2px; font-size:16px; }
+	.netfie-card-head p{ margin:0; font-size:12.5px; color:var(--nf-muted); }
+
+	.netfie-columns{ display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
+	.netfie-form-card{ flex:1 1 380px; max-width:420px; }
+	.netfie-list-card{ flex:2 1 520px; }
+
+	.netfie-field{ margin-bottom:16px; }
+	.netfie-field label{ display:block; font-weight:600; font-size:13px; color:var(--nf-muted); margin-bottom:6px; }
+	.netfie-field input[type=text],
+	.netfie-field select,
+	.netfie-field textarea{
+		width:100%; border:1.5px solid var(--nf-border); border-radius:9px; padding:10px 12px;
+		font-size:14px; background:#fcfbfe; transition:border-color .15s ease, box-shadow .15s ease;
+	}
+	.netfie-field input:focus, .netfie-field select:focus, .netfie-field textarea:focus{
+		border-color:var(--nf-primary); box-shadow:0 0 0 3px rgba(108,43,217,.12); outline:none;
+	}
+
+	.netfie-icon-uploader{ display:flex; align-items:center; gap:14px; }
+	.netfie-icon-preview{
+		width:56px; height:56px; border-radius:12px; border:1.5px dashed var(--nf-border);
+		display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fcfbfe; flex-shrink:0;
+	}
+	.netfie-icon-preview img{ max-width:80%; max-height:80%; object-fit:contain; }
+	.netfie-icon-placeholder{ font-size:22px; color:var(--nf-muted); }
+
+	.netfie-toggle-row{ display:flex; align-items:center; gap:10px; font-weight:500; cursor:pointer; }
+	.netfie-toggle{ position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }
+	.netfie-toggle input{ opacity:0; width:0; height:0; }
+	.netfie-toggle-slider{
+		position:absolute; inset:0; background:#d9d5e8; border-radius:22px; transition:background .18s ease;
+	}
+	.netfie-toggle-slider:before{
+		content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%;
+		transition:transform .18s ease; box-shadow:0 1px 3px rgba(0,0,0,.25);
+	}
+	.netfie-toggle input:checked + .netfie-toggle-slider{ background:var(--nf-primary); }
+	.netfie-toggle input:checked + .netfie-toggle-slider:before{ transform:translateX(18px); }
+
+	.netfie-form-actions{ display:flex; gap:10px; margin-top:4px; }
+
+	.netfie-empty-state{ text-align:center; padding:36px 20px; color:var(--nf-muted); }
+	.netfie-empty-state span{ font-size:34px; display:block; margin-bottom:10px; }
+
+	.netfie-table{ width:100%; border-collapse:collapse; }
+	.netfie-table th{
+		text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--nf-muted);
+		padding:0 10px 10px; border-bottom:2px solid var(--nf-bg);
+	}
+	.netfie-table td{ padding:12px 10px; border-bottom:1px solid var(--nf-bg); font-size:13.5px; vertical-align:middle; }
+	.netfie-table tr:last-child td{ border-bottom:none; }
+
+	.netfie-method-cell{ display:flex; align-items:center; gap:10px; }
+	.netfie-method-cell-icon{
+		width:32px; height:32px; border-radius:50%; background:var(--nf-bg); display:flex; align-items:center;
+		justify-content:center; font-weight:700; color:var(--nf-primary); overflow:hidden; flex-shrink:0; font-size:13px;
+	}
+	.netfie-method-cell-icon img{ width:100%; height:100%; object-fit:contain; }
+
+	.netfie-pill{
+		display:inline-block; padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:700;
+		background:var(--nf-bg); color:var(--nf-primary-dark);
+	}
+	.netfie-pill-on{ background:#e6f6ea; color:#1e8a42; }
+	.netfie-pill-off{ background:#f5f0f0; color:#9a8f8f; }
+
+	.netfie-actions-cell{ white-space:nowrap; }
+	.netfie-action-link{ font-weight:600; text-decoration:none; margin-right:12px; color:var(--nf-primary); }
+	.netfie-action-link:hover{ text-decoration:underline; }
+	.netfie-action-danger{ color:#c0392b; }
+
+	@media (max-width:782px){
+		.netfie-admin-header{ flex-direction:column; align-items:flex-start; }
+	}
+	</style>
 
 	<script>
 	jQuery(document).ready(function($){
@@ -362,7 +529,7 @@ function netfie_pay_methods_page_html() {
 			frame.on('select', function(){
 				var attachment = frame.state().get('selection').first().toJSON();
 				$('#netfie_method_icon').val(attachment.url);
-				$('#netfie_icon_preview').html('<img src="'+attachment.url+'" style="max-height:50px;">');
+				$('#netfie_icon_preview').html('<img src="'+attachment.url+'">');
 			});
 			frame.open();
 		});
@@ -428,7 +595,7 @@ function netfie_pay_init_gateway() {
 				'methods_info' => array(
 					'title'       => 'Payment Methods',
 					'type'        => 'title',
-					'description' => 'To add or edit bKash / Nagad / Rocket etc. go to <a href="' . esc_url( admin_url( 'admin.php?page=netfie-pay-methods' ) ) . '">Netfie Pay</a> in the left admin menu.',
+					'description' => 'To add or edit bKash / Nagad / Rocket etc. go to <a href="' . esc_url( admin_url( 'admin.php?page=netfie-pay-methods' ) ) . '">Netfie Pay</a> in the left admin menu. Remember to use the <code>[netfie-woocommerce_checkout]</code> shortcode on your Checkout page (instead of <code>[woocommerce_checkout]</code>) to get the modern Netfie Pay checkout design.',
 				),
 				'redirect_url' => array(
 					'title'       => 'Redirect URL After Checkout',
@@ -796,21 +963,30 @@ function netfie_pay_order_preview_details( $data, $order ) {
 
 /* =========================================================================
  * 5. MODERN / ANIMATED / FULL-WIDTH CHECKOUT UI
- *    Purely visual - restyles the existing [woocommerce_checkout] output.
- *    No WooCommerce templates are overridden and no field/markup logic
- *    is changed, so this is safe to toggle on/off at any time.
+ *    Provides a dedicated [netfie-woocommerce_checkout] shortcode.
+ *    Use this instead of the default [woocommerce_checkout] shortcode
+ *    on your Checkout page to get the modern Netfie Pay design.
+ *    Internally it just renders the normal WooCommerce checkout and
+ *    wraps it - no WooCommerce templates are overridden and no
+ *    field/markup logic is changed, so it's safe to toggle on/off.
  * ========================================================================= */
 
 /**
- * Wrap the [woocommerce_checkout] shortcode output in a full-width
- * container so the CSS "full-bleed" technique below has something
- * reliable to target, regardless of the active theme's markup.
+ * [netfie-woocommerce_checkout] - drop-in replacement for
+ * [woocommerce_checkout] that renders the modern Netfie Pay design.
  */
-add_filter( 'do_shortcode_tag', 'netfie_pay_wrap_checkout_shortcode', 10, 2 );
-function netfie_pay_wrap_checkout_shortcode( $output, $tag ) {
-	if ( 'woocommerce_checkout' === $tag && netfie_pay_is_modern_checkout_enabled() ) {
+add_shortcode( 'netfie-woocommerce_checkout', 'netfie_pay_checkout_shortcode' );
+function netfie_pay_checkout_shortcode( $atts = array() ) {
+	if ( ! function_exists( 'WC' ) ) {
+		return '';
+	}
+
+	$output = do_shortcode( '[woocommerce_checkout]' );
+
+	if ( netfie_pay_is_modern_checkout_enabled() ) {
 		$output = '<div class="netfie-checkout-fullwidth">' . $output . '</div>';
 	}
+
 	return $output;
 }
 
