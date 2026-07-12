@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.5.0
+ * Version:     1.7.0
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.5.0' );
+define( 'NETFIE_PAY_VERSION', '1.7.0' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -621,9 +621,15 @@ function netfie_pay_init_gateway() {
 				echo '<p style="color:#a00;">No payment methods have been configured yet.</p>';
 				return;
 			}
+
+			// Get the formatted total cart payable amount
+			$cart_total = WC()->cart->get_total();
 			?>
 			<div id="netfie-pay-box">
+				<!-- Standard fields mapped inside form, populated in background from popup -->
 				<input type="hidden" name="netfie_method_id" id="netfie_method_id" value="">
+				<input type="hidden" name="netfie_sender_number" id="netfie_sender_number" value="">
+				<input type="hidden" name="netfie_transaction_id" id="netfie_transaction_id" value="">
 
 				<button type="button" class="netfie-select-btn" id="netfie-open-popup">
 					<span class="netfie-select-btn-icon">💳</span>
@@ -632,51 +638,112 @@ function netfie_pay_init_gateway() {
 				</button>
 
 				<div id="netfie-selected-summary" class="netfie-summary-card" style="display:none;"></div>
-
-				<div id="netfie-fields" class="netfie-tx-fields" style="display:none;">
-					<p class="form-row form-row-wide">
-						<label>Your Sender Number <span class="required">*</span></label>
-						<input type="tel" name="netfie_sender_number" id="netfie_sender_number" class="input-text" placeholder="e.g. 01XXXXXXXXX">
-					</p>
-					<p class="form-row form-row-wide">
-						<label>Transaction ID <span class="required">*</span></label>
-						<input type="text" name="netfie_transaction_id" id="netfie_transaction_id" class="input-text" placeholder="e.g. 8N7A6XXXXX">
-					</p>
-				</div>
 			</div>
 
-			<!-- Popup markup to be placed inside the DOM (JS will append to body) -->
+			<!-- Popup overlay which is safely moved to body by jquery -->
 			<div id="netfie-popup-overlay" class="netfie-popup-overlay">
 				<div class="netfie-popup-panel" role="dialog" aria-modal="true" aria-label="Choose a payment method">
-					<div class="netfie-popup-header">
-						<div>
-							<h3>Choose a Payment Method</h3>
-							<p class="netfie-popup-subtitle">Select where you'll send the payment from</p>
-						</div>
-						<button type="button" id="netfie-popup-close" class="netfie-popup-close" aria-label="Close">&times;</button>
-					</div>
-					<div id="netfie-method-list" class="netfie-method-grid">
-						<?php foreach ( $methods as $id => $m ) : ?>
-							<div class="netfie-method-item"
-								tabindex="0"
-								data-id="<?php echo esc_attr( $id ); ?>"
-								data-name="<?php echo esc_attr( $m['name'] ); ?>"
-								data-number="<?php echo esc_attr( $m['number'] ); ?>"
-								data-type="<?php echo esc_attr( netfie_pay_account_type_label( $m['account_type'] ) ); ?>"
-								data-instructions="<?php echo esc_attr( $m['instructions'] ); ?>">
-								<span class="netfie-method-check">✓</span>
-								<span class="netfie-method-avatar">
-									<?php if ( ! empty( $m['icon'] ) ) : ?>
-										<img src="<?php echo esc_url( $m['icon'] ); ?>" alt="<?php echo esc_attr( $m['name'] ); ?>">
-									<?php else : ?>
-										<span class="netfie-method-avatar-fallback"><?php echo esc_html( mb_substr( $m['name'], 0, 1 ) ); ?></span>
-									<?php endif; ?>
-								</span>
-								<span class="netfie-method-name"><?php echo esc_html( $m['name'] ); ?></span>
-								<span class="netfie-method-sub"><?php echo esc_html( netfie_pay_account_type_label( $m['account_type'] ) ); ?> &middot; <?php echo esc_html( $m['number'] ); ?></span>
+					
+					<!-- SCREEN 1: Grid selection screen -->
+					<div id="netfie-screen-grid">
+						<div class="netfie-popup-header">
+							<div>
+								<h3>Choose a Payment Method</h3>
+								<p class="netfie-popup-subtitle">Select where you'll send the payment from</p>
 							</div>
-						<?php endforeach; ?>
+							<button type="button" class="netfie-popup-close" aria-label="Close">&times;</button>
+						</div>
+						<div class="netfie-method-grid">
+							<?php foreach ( $methods as $id => $m ) : ?>
+								<div class="netfie-method-item"
+									tabindex="0"
+									data-id="<?php echo esc_attr( $id ); ?>"
+									data-name="<?php echo esc_attr( $m['name'] ); ?>"
+									data-number="<?php echo esc_attr( $m['number'] ); ?>"
+									data-type="<?php echo esc_attr( netfie_pay_account_type_label( $m['account_type'] ) ); ?>"
+									data-instructions="<?php echo esc_attr( $m['instructions'] ); ?>">
+									<span class="netfie-method-check">✓</span>
+									<span class="netfie-method-avatar">
+										<?php if ( ! empty( $m['icon'] ) ) : ?>
+											<img src="<?php echo esc_url( $m['icon'] ); ?>" alt="<?php echo esc_attr( $m['name'] ); ?>">
+										<?php else : ?>
+											<span class="netfie-method-avatar-fallback"><?php echo esc_html( mb_substr( $m['name'], 0, 1 ) ); ?></span>
+										<?php endif; ?>
+									</span>
+									<span class="netfie-method-name"><?php echo esc_html( $m['name'] ); ?></span>
+									<span class="netfie-method-sub"><?php echo esc_html( netfie_pay_account_type_label( $m['account_type'] ) ); ?> &middot; <?php echo esc_html( $m['number'] ); ?></span>
+								</div>
+							<?php endforeach; ?>
+						</div>
 					</div>
+
+					<!-- SCREEN 2: Secure input & confirmation panel (shown when method is clicked) -->
+					<div id="netfie-screen-details" style="display: none; padding: 24px;">
+						<button type="button" class="netfie-popup-back" id="netfie-btn-back">
+							&larr; Back to payment methods
+						</button>
+
+						<div class="netfie-popup-method-info">
+							<span id="netfie-detail-avatar" class="netfie-popup-avatar-container"></span>
+							<div>
+								<h4 id="netfie-detail-name" style="margin: 0; font-size: 18px; font-weight: 700; color: var(--netfie-text);"></h4>
+								<p id="netfie-detail-type" style="margin: 2px 0 0; font-size: 13px; color: var(--netfie-muted);"></p>
+							</div>
+						</div>
+
+						<!-- Large Total Payable Amount -->
+						<div class="netfie-popup-amount-box">
+							<span class="netfie-amount-label">Amount to Send</span>
+							<div class="netfie-amount-val"><?php echo $cart_total; ?></div>
+						</div>
+
+						<!-- Copy recipient number block -->
+						<div class="netfie-popup-number-box">
+							<div class="netfie-popup-number-info">
+								<span class="netfie-popup-number-label">Send payment to:</span>
+								<span id="netfie-detail-number" class="netfie-popup-number-val"></span>
+							</div>
+							<button type="button" class="netfie-copy-btn" id="netfie-copy-btn">
+								📋 Copy Number
+							</button>
+						</div>
+
+						<!-- Dynamic instructions -->
+						<p id="netfie-detail-instructions" class="netfie-popup-instructions-text"></p>
+
+						<!-- Sender Inputs -->
+						<div class="netfie-popup-fields">
+							<p class="form-row">
+								<label for="popup_netfie_sender_number">Your Sender Number <span class="required">*</span></label>
+								<input type="tel" id="popup_netfie_sender_number" class="input-text" placeholder="e.g. 01XXXXXXXXX">
+							</p>
+							<p class="form-row">
+								<label for="popup_netfie_transaction_id">Transaction ID <span class="required">*</span></label>
+								<input type="text" id="popup_netfie_transaction_id" class="input-text" placeholder="e.g. 8N7A6XXXXX">
+							</p>
+						</div>
+
+						<!-- Mirror Terms of service inside popup if activated in WC settings -->
+						<?php if ( wc_terms_and_conditions_checkbox_enabled() ) : ?>
+							<div class="woocommerce-terms-and-conditions-wrapper popup-terms-wrapper" style="margin-bottom: 20px;">
+								<label class="checkbox">
+									<input type="checkbox" id="popup_terms" style="margin-top:3px; accent-color: var(--netfie-primary);">
+									<span>I have read and agree to the website <a href="<?php echo esc_url( wc_get_page_permalink( 'terms' ) ); ?>" target="_blank" class="woocommerce-terms-and-conditions-link">terms and conditions</a> <span class="required">*</span></span>
+								</label>
+							</div>
+						<?php endif; ?>
+
+						<!-- Popup Checkout actions block -->
+						<div class="netfie-popup-action-block">
+							<button type="button" class="netfie-popup-submit-btn" id="popup_place_order">
+								Place order
+							</button>
+							<p class="netfie-popup-secure-note">
+								🔒 Secure checkout &mdash; your information is protected
+							</p>
+						</div>
+					</div>
+
 				</div>
 			</div>
 
@@ -705,14 +772,8 @@ function netfie_pay_init_gateway() {
 			}
 			.netfie-summary-avatar img{ max-width:70%; max-height:70%; object-fit:contain; }
 			.netfie-summary-title{ font-weight:700; font-size:15px; margin:0 0 4px; color: #2a2438; }
-			.netfie-summary-number{ font-size:14px; margin:0 0 4px; color: #4a4458; }
+			.netfie-summary-number{ font-size:14px; margin:0; color: #4a4458; }
 			.netfie-summary-number strong{ color:#6C2BD9; }
-			.netfie-summary-instructions{ font-size:13px; color:#7a7488; margin:0; line-height: 1.4; }
-
-			.netfie-tx-fields{
-				margin-top:16px; padding:20px; background:#f8fafc; border-radius:12px;
-				border:1.5px solid #e2e8f0; animation:netfiePopIn .3s cubic-bezier(0.16, 1, 0.3, 1) both;
-			}
 
 			.netfie-popup-overlay{
 				position:fixed; inset:0; z-index:99999999 !important; background:rgba(15, 23, 42, 0.6) !important;
@@ -772,6 +833,179 @@ function netfie_pay_init_gateway() {
 			.netfie-method-name{ font-weight:700; font-size:14px; color: #0f172a; }
 			.netfie-method-sub{ font-size:12px; color:#64748b; }
 
+			/* ---- SCREEN 2: Secure popup details page styling ---- */
+			.netfie-popup-back {
+				background: none;
+				border: none;
+				color: var(--netfie-primary);
+				font-size: 14px;
+				font-weight: 600;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				padding: 0;
+				margin-bottom: 22px;
+				transition: color 0.15s ease;
+			}
+			.netfie-popup-back:hover { color: var(--netfie-primary-dark); }
+
+			.netfie-popup-method-info {
+				display: flex;
+				align-items: center;
+				gap: 14px;
+				margin-bottom: 20px;
+			}
+			.netfie-popup-avatar-container {
+				width: 46px;
+				height: 46px;
+				border-radius: 50%;
+				background: #fff;
+				border: 1.5px solid #e2e8f0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				overflow: hidden;
+			}
+			.netfie-popup-avatar-container img { max-width: 65%; max-height: 65%; object-fit: contain; }
+
+			.netfie-popup-amount-box {
+				background: #faf5ff;
+				border: 1.5px dashed #d8b4fe;
+				border-radius: 12px;
+				padding: 16px;
+				text-align: center;
+				margin-bottom: 20px;
+			}
+			.netfie-amount-label {
+				font-size: 11px;
+				font-weight: 700;
+				text-transform: uppercase;
+				color: var(--netfie-muted);
+				letter-spacing: 0.5px;
+				display: block;
+				margin-bottom: 4px;
+			}
+			.netfie-amount-val {
+				font-size: 32px !important;
+				font-weight: 800 !important;
+				color: var(--netfie-primary) !important;
+				line-height: 1.2;
+			}
+			.netfie-amount-val .woocommerce-Price-amount {
+				font-size: 32px !important;
+				font-weight: 800 !important;
+				color: var(--netfie-primary) !important;
+			}
+
+			.netfie-popup-number-box {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				background: #f8fafc;
+				border: 1.5px solid #e2e8f0;
+				border-radius: 12px;
+				padding: 14px 18px;
+				margin-bottom: 16px;
+				gap: 12px;
+			}
+			.netfie-popup-number-info {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+			}
+			.netfie-popup-number-label {
+				font-size: 11px;
+				color: var(--netfie-muted);
+				text-transform: uppercase;
+				font-weight: 700;
+				letter-spacing: 0.3px;
+			}
+			.netfie-popup-number-val {
+				font-size: 20px;
+				font-weight: 700;
+				color: var(--netfie-text);
+				letter-spacing: 0.2px;
+			}
+			.netfie-copy-btn {
+				background: #ffffff;
+				border: 1.5px solid var(--netfie-border);
+				color: var(--netfie-text);
+				padding: 8px 14px;
+				border-radius: 8px;
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 0.15s ease;
+				white-space: nowrap;
+			}
+			.netfie-copy-btn:hover {
+				border-color: var(--netfie-primary);
+				color: var(--netfie-primary);
+				background: #faf5ff;
+			}
+
+			.netfie-popup-instructions-text {
+				font-size: 13.5px;
+				color: var(--netfie-muted);
+				line-height: 1.5;
+				margin: 0 0 20px 0;
+			}
+
+			.netfie-popup-fields {
+				margin-bottom: 20px;
+			}
+			.netfie-popup-fields .form-row {
+				margin-bottom: 16px;
+			}
+			.netfie-popup-fields label {
+				font-weight: 600;
+				font-size: 13.5px;
+				color: var(--netfie-text);
+				margin-bottom: 6px;
+				display: block;
+			}
+
+			.netfie-popup-action-block {
+				border-top: 1.5px solid #f1f5f9;
+				padding-top: 20px;
+				margin-top: 20px;
+			}
+			.netfie-popup-submit-btn {
+				width: 100%;
+				background: linear-gradient(135deg, var(--netfie-primary), #ea580c) !important;
+				color: #ffffff !important;
+				border: none !important;
+				border-radius: 12px !important;
+				padding: 16px 24px !important;
+				font-size: 16px !important;
+				font-weight: 700 !important;
+				cursor: pointer !important;
+				box-shadow: 0 10px 25px -5px rgba(108, 43, 217, 0.3) !important;
+				transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+				display: block;
+				text-align: center;
+			}
+			.netfie-popup-submit-btn:hover {
+				transform: translateY(-2px) !important;
+				box-shadow: 0 15px 30px -5px rgba(108, 43, 217, 0.4) !important;
+				filter: brightness(1.05);
+			}
+			.netfie-popup-submit-btn:active {
+				transform: translateY(0) !important;
+			}
+			.netfie-popup-secure-note {
+				text-align: center;
+				font-size: 12.5px;
+				font-weight: 500;
+				color: var(--netfie-muted);
+				margin: 12px 0 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+			}
+
 			@keyframes netfiePopIn{
 				from{ opacity:0; transform:translateY(8px); }
 				to{ opacity:1; transform:translateY(0); }
@@ -780,7 +1014,7 @@ function netfie_pay_init_gateway() {
 
 			<script>
 			(function($){
-				// Safely append floating overlay container directly to page body so it escapes nested containers and remains above all other sections
+				// Append floating overlay container to page body to ensure correct viewport positioning
 				function netfieMovePopupToBody(){
 					var $popup = $('#netfie-popup-overlay');
 					if ($popup.length && !$popup.parent().is('body')) {
@@ -803,7 +1037,7 @@ function netfie_pay_init_gateway() {
 				$(document).on('click.netfie', '#netfie-open-popup', function(){
 					netfieOpenPopup();
 				});
-				$(document).on('click.netfie', '#netfie-popup-close', function(){
+				$(document).on('click.netfie', '.netfie-popup-close', function(){
 					netfieClosePopup();
 				});
 				$(document).on('click.netfie', '#netfie-popup-overlay', function(e){
@@ -813,6 +1047,7 @@ function netfie_pay_init_gateway() {
 					if ( e.key === 'Escape' ) { netfieClosePopup(); }
 				});
 
+				// Grid method selection handler
 				$(document).on('click.netfie keydown.netfie', '.netfie-method-item', function(e){
 					if ( e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ' ) { return; }
 					e.preventDefault();
@@ -825,23 +1060,120 @@ function netfie_pay_init_gateway() {
 					var instructions = $el.data('instructions');
 					var iconHtml = $el.find('.netfie-method-avatar').html();
 
-					$('.netfie-method-item').removeClass('is-selected');
-					$el.addClass('is-selected');
-
+					// Sync selected method ID with the hidden input field
 					$('#netfie_method_id').val(id);
 
-					var html = '<span class="netfie-summary-avatar">' + iconHtml + '</span>' +
-						'<div>' +
-							'<p class="netfie-summary-title">' + name + ' &middot; ' + type + '</p>' +
-							'<p class="netfie-summary-number">Send payment to: <strong>' + number + '</strong></p>' +
-							( instructions ? '<p class="netfie-summary-instructions">' + instructions + '</p>' : '' ) +
-						'</div>';
+					// Populate details screen inputs
+					$('#netfie-detail-avatar').html(iconHtml);
+					$('#netfie-detail-name').text(name);
+					$('#netfie-detail-type').text(type + ' Account');
+					$('#netfie-detail-number').text(number);
+					$('#netfie-detail-instructions').text(instructions || '');
+					$('#netfie-copy-btn').data('number', number);
 
-					$('#netfie-selected-summary').html(html).show();
-					$('#netfie-fields').show();
-					$('#netfie-open-popup-label').text('Change: ' + name);
+					// Reset inner details values before typing
+					$('#popup_netfie_sender_number').val($('#netfie_sender_number').val());
+					$('#popup_netfie_transaction_id').val($('#netfie_transaction_id').val());
 
-					setTimeout(netfieClosePopup, 180);
+					// Switch popup screen views with basic fade effect
+					$('#netfie-screen-grid').hide();
+					$('#netfie-screen-details').fadeIn(200);
+				});
+
+				// Back to selection screen handler
+				$(document).on('click.netfie', '#netfie-btn-back', function(e){
+					e.preventDefault();
+					$('#netfie-screen-details').hide();
+					$('#netfie-screen-grid').fadeIn(200);
+				});
+
+				// Real-time synchronization of inner fields with WooCommerce checkout form
+				$(document).on('input', '#popup_netfie_sender_number', function() {
+					$('#netfie_sender_number').val($(this).val());
+				});
+				$(document).on('input', '#popup_netfie_transaction_id', function() {
+					$('#netfie_transaction_id').val($(this).val());
+				});
+				$(document).on('change', '#popup_terms', function() {
+					$('input#terms, input[name="terms"]').prop('checked', $(this).is(':checked')).trigger('change');
+				});
+
+				// Copy recipient mobile number function with fallback mechanism
+				$(document).on('click', '#netfie-copy-btn', function(e) {
+					e.preventDefault();
+					var num = $(this).data('number');
+					var $btn = $(this);
+					if (navigator.clipboard && window.isSecureContext) {
+						navigator.clipboard.writeText(num).then(function() {
+							netfieShowCopied($btn);
+						}).catch(function() {
+							netfieFallbackCopy(num, $btn);
+						});
+					} else {
+						netfieFallbackCopy(num, $btn);
+					}
+				});
+
+				function netfieFallbackCopy(text, $btn) {
+					var $temp = $("<input>");
+					$("body").append($temp);
+					$temp.val(text).select();
+					document.execCommand("copy");
+					$temp.remove();
+					netfieShowCopied($btn);
+				}
+
+				function netfieShowCopied($btn) {
+					$btn.html('✅ Copied!');
+					setTimeout(function() {
+						$btn.html('📋 Copy Number');
+					}, 2000);
+				}
+
+				// Place order action - maps directly to native checkout submission
+				$(document).on('click', '#popup_place_order', function(e) {
+					e.preventDefault();
+					
+					// Re-trigger synchronization check
+					$('#netfie_sender_number').val($('#popup_netfie_sender_number').val());
+					$('#netfie_transaction_id').val($('#popup_netfie_transaction_id').val());
+					
+					if ($('#popup_terms').length) {
+						$('input#terms, input[name="terms"]').prop('checked', $('#popup_terms').is(':checked')).trigger('change');
+					}
+
+					// Close popup then trigger place order
+					netfieClosePopup();
+					
+					// Trigger standard WooCommerce form submit button
+					$('#place_order').trigger('click');
+				});
+
+				// Main checkout update sync
+				function netfieUpdateCheckoutPreview() {
+					var id = $('#netfie_method_id').val();
+					if (id) {
+						var $item = $('.netfie-method-item[data-id="' + id + '"]');
+						if ($item.length) {
+							var name = $item.data('name');
+							var number = $item.data('number');
+							var type = $item.data('type');
+							var avatarHtml = $item.find('.netfie-method-avatar').html();
+
+							var html = '<span class="netfie-summary-avatar">' + avatarHtml + '</span>' +
+								'<div>' +
+									'<p class="netfie-summary-title">' + name + ' &middot; ' + type + '</p>' +
+									'<p class="netfie-summary-number">Send payment to: <strong>' + number + '</strong></p>' +
+								'</div>';
+
+							$('#netfie-selected-summary').html(html).show();
+							$('#netfie-open-popup-label').text('Change: ' + name);
+						}
+					}
+				}
+
+				$(document).on('updated_checkout checkout_error', function(){
+					netfieUpdateCheckoutPreview();
 				});
 
 				$(document).ready(function(){
@@ -1604,7 +1936,87 @@ function netfie_pay_checkout_ui_js() {
 }
 
 /* =========================================================================
- * 6. ACTIVATION NOTICE IF WOOCOMMERCE MISSING
+ * 6. CUSTOM FRONT-END STATUS OVERRIDES FOR MY ACCOUNT / VIEW ORDER PAGE
+ * ========================================================================= */
+
+/**
+ * Filter the paid statuses array on front-end order view pages.
+ * If the customer submitted manual payment details (Sender + Txn ID),
+ * we dynamically treat the order status as a paid state, clearing theme "Unpaid" tags.
+ */
+add_filter( 'woocommerce_order_is_paid_statuses', 'netfie_pay_conditional_paid_status', 10, 1 );
+function netfie_pay_conditional_paid_status( $statuses ) {
+	if ( is_admin() ) {
+		return $statuses;
+	}
+
+	global $wp;
+	if ( isset( $wp->query_vars['view-order'] ) ) {
+		$order_id = absint( $wp->query_vars['view-order'] );
+		$order    = wc_get_order( $order_id );
+		if ( $order && $order->get_payment_method() === 'netfie_pay' ) {
+			$sender = $order->get_meta( '_netfie_sender_number' );
+			$txn    = $order->get_meta( '_netfie_transaction_id' );
+			if ( $sender && $txn ) {
+				// Safely append current order status to the paid collection
+				$statuses[] = $order->get_status();
+			}
+		}
+	}
+	return $statuses;
+}
+
+/**
+ * Append a green "Paid" status indicator next to the Payment Method Title
+ * on customer My Account / View Order screen.
+ */
+add_filter( 'woocommerce_order_get_payment_method_title', 'netfie_pay_modify_payment_method_title_frontend', 10, 2 );
+function netfie_pay_modify_payment_method_title_frontend( $title, $order ) {
+	if ( is_admin() || ! is_a( $order, 'WC_Order' ) ) {
+		return $title;
+	}
+
+	if ( $order->get_payment_method() === 'netfie_pay' ) {
+		$sender = $order->get_meta( '_netfie_sender_number' );
+		$txn    = $order->get_meta( '_netfie_transaction_id' );
+		if ( $sender && $txn ) {
+			$title .= ' <span class="netfie-payment-badge-paid">Paid</span>';
+		}
+	}
+	return $title;
+}
+
+/**
+ * Print necessary custom styles for front-end view-order status elements.
+ */
+add_action( 'wp_head', 'netfie_pay_view_order_styles' );
+function netfie_pay_view_order_styles() {
+	if ( ! is_account_page() ) {
+		return;
+	}
+	?>
+	<style id="netfie-pay-view-order-css">
+	.netfie-payment-badge-paid {
+		background-color: #10b981 !important;
+		color: #ffffff !important;
+		padding: 4px 10px !important;
+		border-radius: 6px !important;
+		font-size: 11px !important;
+		font-weight: 700 !important;
+		text-transform: uppercase !important;
+		display: inline-block !important;
+		margin-left: 8px !important;
+		line-height: 1.2 !important;
+		vertical-align: middle !important;
+		letter-spacing: 0.3px !important;
+		box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+	}
+	</style>
+	<?php
+}
+
+/* =========================================================================
+ * 7. ACTIVATION NOTICE IF WOOCOMMERCE MISSING
  * ========================================================================= */
 
 add_action( 'admin_notices', 'netfie_pay_missing_wc_notice' );
