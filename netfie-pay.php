@@ -3,7 +3,7 @@
  * Plugin Name: Netfie Pay
  * Plugin URI:  https://netfie.com
  * Description: Accept manual mobile banking payments (bKash, Nagad, Rocket, Upay, etc.) on WooCommerce checkout. Add unlimited payment methods with icon, number, account type and instructions from the plugin settings page. Customers select a method at checkout, send money manually, then submit the sender number and Transaction ID. Also includes an optional modern, animated, full-width redesign of the [woocommerce_checkout] page.
- * Version:     1.9.1
+ * Version:     1.9.4
  * Author:      Netfie
  * Author URI:  https://netfie.com
  * Text Domain: netfie-pay
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NETFIE_PAY_OPTION_METHODS', 'netfie_pay_methods' );
 define( 'NETFIE_PAY_OPTION_MODERN_UI', 'netfie_pay_modern_checkout' );
-define( 'NETFIE_PAY_VERSION', '1.9.1' );
+define( 'NETFIE_PAY_VERSION', '1.9.4' );
 
 /* =========================================================================
  * 1. METHODS DATA HELPERS
@@ -813,8 +813,8 @@ function netfie_pay_init_gateway() {
 				display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;
 				cursor:pointer; background:#ffffff; transition:all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 			}
-			.netfie-method-item:hover{ border-color:#6C2BD9; transform:translateY(-2px); box-shadow:0 10px 15px -3px rgba(108, 43, 217, 0.05); }
-			.netfie-method-item.is-selected{ border-color:#6C2BD9; background:#faf5ff; box-shadow:0 0 0 4px rgba(108, 43, 217, 0.1); }
+			.netfie-method-item:hover{ border-color:#6C2BD9; transform:translateY(-2px); box-shadow:0 10px 15px -3px rgba(108,43,217,.05); }
+			.netfie-method-item.is-selected{ border-color:#6C2BD9; background:#faf5ff; box-shadow:0 0 0 4px rgba(108,43,217,.1); }
 
 			.netfie-method-check{
 				position:absolute; top:12px; right:12px; width:20px; height:20px; border-radius:50%;
@@ -1235,6 +1235,11 @@ function netfie_pay_init_gateway() {
 			wc_reduce_stock_levels( $order_id );
 			WC()->cart->empty_cart();
 
+			// Set a safe front-end session flag to trigger the custom "Thank You" checkout screen on reload/refresh
+			if ( WC()->session ) {
+				WC()->session->set( 'netfie_just_placed_order', true );
+			}
+
 			return array(
 				'result'   => 'success',
 				'redirect' => 'https://netfie.com/my-account/orders/',
@@ -1318,11 +1323,29 @@ function netfie_pay_order_preview_details( $data, $order ) {
 /**
  * [netfie-woocommerce_checkout] - drop-in replacement for
  * [woocommerce_checkout] that renders the modern Netfie Pay design.
+ * Checks if the customer just successfully submitted a Netfie order,
+ * in which case a persistent Thank You card is shown directly.
  */
 add_shortcode( 'netfie-woocommerce_checkout', 'netfie_pay_checkout_shortcode' );
 function netfie_pay_checkout_shortcode( $atts = array() ) {
 	if ( ! function_exists( 'WC' ) ) {
 		return '';
+	}
+
+	// If the customer just submitted their manual payment details, render a persistent Thank You screen
+	if ( WC()->session && WC()->session->get( 'netfie_just_placed_order' ) ) {
+		WC()->session->set( 'netfie_just_placed_order', false ); // Reset flag
+
+		return '
+		<div class="netfie-checkout-thankyou-container">
+			<div class="netfie-thankyou-icon-box">
+				<span class="netfie-thankyou-check">✓</span>
+			</div>
+			<h2>Thank you for your order!</h2>
+			<p>Your manual payment has been recorded. We are currently verifying your manual transaction details.</p>
+			<a href="https://netfie.com/my-account/orders/" class="netfie-thankyou-btn">Check Your Order Status</a>
+			<p class="netfie-thankyou-secure">🔒 Secure checkout &mdash; your information is protected</p>
+		</div>';
 	}
 
 	$output = do_shortcode( '[woocommerce_checkout]' );
@@ -1773,11 +1796,11 @@ function netfie_pay_checkout_ui_css() {
 		letter-spacing:.3px !important;
 		cursor:pointer !important;
 		transition:all .2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-		box-shadow:0 10px 25px -5px rgba(108,43,217,.3) !important;
+		box-shadow:0 10px 25px -5px rgba(108, 43, 217, 0.3) !important;
 	}
 	body.netfie-modern-checkout #place_order:hover{
 		transform:translateY(-2px) !important;
-		box-shadow:0 15px 30px -5px rgba(108,43,217,.4) !important;
+		box-shadow:0 15px 30px -5px rgba(108, 43, 217, 0.4) !important;
 		filter:brightness(1.05);
 	}
 	body.netfie-modern-checkout #place_order:active{
@@ -1846,20 +1869,7 @@ function netfie_pay_checkout_ui_css() {
 	}
 
 	/* ---- Post-checkout Thank You Popup ---- */
-	.netfie-thankyou-overlay {
-		position: fixed;
-		inset: 0;
-		z-index: 999999999 !important;
-		background: rgba(15, 23, 42, 0.75) !important;
-		backdrop-filter: blur(12px) !important;
-		-webkit-backdrop-filter: blur(12px) !important;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 20px;
-		animation: netfieFadeIn .3s ease both;
-	}
-	.netfie-thankyou-panel {
+	.netfie-checkout-thankyou-container {
 		background: #ffffff !important;
 		width: 100%;
 		max-width: 480px;
@@ -1870,6 +1880,17 @@ function netfie_pay_checkout_ui_css() {
 		transform: scale(.95) translateY(15px);
 		animation: netfiePopIn .4s cubic-bezier(0.16, 1, 0.3, 1) both;
 		animation-delay: .1s;
+	}
+	.netfie-checkout-thankyou-container {
+		max-width: 600px;
+		margin: 40px auto;
+		background: var(--netfie-card) !important;
+		border: 1px solid var(--netfie-border) !important;
+		border-radius: var(--netfie-radius) !important;
+		padding: 48px 32px !important;
+		box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.02) !important;
+		transform: none;
+		animation: netfieFadeUp .5s ease both;
 	}
 	.netfie-thankyou-icon-box {
 		width: 80px;
@@ -1887,14 +1908,14 @@ function netfie_pay_checkout_ui_css() {
 		color: #16a34a;
 		font-weight: 700;
 	}
-	.netfie-thankyou-panel h2 {
+	.netfie-checkout-thankyou-container h2 {
 		font-size: 26px !important;
 		font-weight: 800 !important;
 		color: #0f172a !important;
 		margin: 0 0 12px 0 !important;
 		line-height: 1.2 !important;
 	}
-	.netfie-thankyou-panel p {
+	.netfie-checkout-thankyou-container p {
 		font-size: 14.5px !important;
 		color: #64748b !important;
 		line-height: 1.6 !important;
@@ -1992,58 +2013,6 @@ function netfie_pay_checkout_ui_js() {
 			netfieAddSecureNote();
 			netfieHideEmptyCards();
 		}
-
-		// Helper function to append and trigger the uncrossable blurred thank-you modal
-		window.netfieShowSuccessPopup = function() {
-			if (!$('#netfie-thankyou-overlay').length) {
-				$('body').append(
-					'<div id="netfie-thankyou-overlay" class="netfie-thankyou-overlay">' +
-						'<div class="netfie-thankyou-panel">' +
-							'<div class="netfie-thankyou-icon-box"><span class="netfie-thankyou-check">✓</span></div>' +
-							'<h2>Thank you for your order!</h2>' +
-							'<p>Your manual payment has been recorded. We are currently verifying your manual transaction details.</p>' +
-							'<a href="https://netfie.com/my-account/orders/" class="netfie-thankyou-btn">Check Your Order</a>' +
-							'<p class="netfie-thankyou-secure">🔒 Secure checkout &mdash; your information is protected</p>' +
-						'</div>' +
-					'</div>'
-				);
-			} else {
-				$('#netfie-thankyou-overlay').show();
-			}
-			$('body').css('overflow', 'hidden');
-		};
-
-		// Intercept the server checkout response BEFORE standard WooCommerce success execution begins
-		$.ajaxSetup({
-			dataFilter: function(data, type) {
-				try {
-					var json = JSON.parse(data);
-					// If the AJAX checkout reports success and has a redirect parameter
-					if (json && json.result === 'success' && json.redirect) {
-						var activeGateway = $('input[name="payment_method"]:checked').val();
-						if (activeGateway === 'netfie_pay') {
-							// Store the real redirect URL for confirmation, then replace the native redirect to stop hard reload
-							window.netfie_real_redirect = json.redirect;
-							json.redirect = '#netfie-success'; 
-							return JSON.stringify(json);
-						}
-					}
-				} catch (e) {}
-				return data;
-			}
-		});
-
-		// Listen to all AJAX complete events. If checkout completed successfully under netfie_pay, launch popup
-		$(document).ajaxComplete(function(event, xhr, settings) {
-			if (settings.url && settings.url.indexOf('wc-ajax=checkout') !== -1) {
-				var activeGateway = $('input[name="payment_method"]:checked').val();
-				if (activeGateway === 'netfie_pay') {
-					if (window.netfie_real_redirect) {
-						window.netfieShowSuccessPopup();
-					}
-				}
-			}
-		});
 
 		$(document.body).on('updated_checkout payment_method_selected change', netfieRunAll);
 		$(document).ready(netfieRunAll);
